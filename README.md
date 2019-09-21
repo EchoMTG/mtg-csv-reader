@@ -17,7 +17,8 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
 2. detact fields by sample a few items of each column to make a best guess on what the column is
 3. Return the data in a uniform JSON object like
 
-```{
+```
+{
     "name" : "Snapcaster Mage",
     "expansion" : "innistrad",
     "set_code" :"inn",
@@ -28,6 +29,7 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
     "lanaguage" : "EN" // optional defaults to EN
 
 }
+```
 
 ## Testing 
 
