@@ -1,0 +1,19 @@
+{
+  "name": "csvReader",
+  "version": "1.0.0",
+  "description": "uploads a csv returns json",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "convert-csv-to-json": "0.0.14",
+    "csv-parser": "^2.2.0",
+    "express": "^4.16.4",
+    "express-fileupload": "^1.1.4",
+    "fs": "0.0.1-security"
+  }
+}
