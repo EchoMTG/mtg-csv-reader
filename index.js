@@ -18,7 +18,7 @@ app.get('/', (req, res) => res.send(`
 </form>
 `)); 
 
-app.post('/', (req, res) => {
+app.post('/upload', (req, res) => {
     if (Object.keys(req.files).length == 0) {
         return res.status(400).send('No files were uploaded.');
     }
