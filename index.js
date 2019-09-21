@@ -1,7 +1,7 @@
  
 //csvToJson.generateJsonFileFromCsv(fileInputName,fileOutputName);
 
-//var express = require('express');
+var express = require('express');
 const fileUpload = require('express-fileupload');
 const fs = require('fs')
 const csv = require('csv-parser')
@@ -10,15 +10,15 @@ const app = express();
 const port = 80;
 
 app.use(fileUpload());
-/*
+
 app.get('/', (req, res) => res.send(`
 <form action="/upload" method="post" enctype="multipart/form-data">
 <input name="csvFile" type="file" />
 <input type="submit">
 </form>
-`)); */  
+`)); 
 
-exports.csvReader = (req, res) => {
+app.post('/', (req, res) => {
     if (Object.keys(req.files).length == 0) {
         return res.status(400).send('No files were uploaded.');
     }
