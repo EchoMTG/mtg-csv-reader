@@ -11,7 +11,7 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
 * condition (string 1-2 chards) NM/M/LP/MP/D etc
 * foil (boolean)
 
-## Ideas to tackle
+## Current Concepts
 
 1. Be able to read both formats and convert it into a javascrip object that can be iterated over
 2. detact fields by sample a few items of each column to make a best guess on what the column is
