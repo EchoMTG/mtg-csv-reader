@@ -2,7 +2,6 @@ import * as express from "express"
 import * as fileUpload from "express-fileupload"
 import {CsvProcessor} from "./helpers/csv_processor";
 
-const csvProcessor: CsvProcessor = new CsvProcessor();
 
 export class App {
     _app: express.Application;
@@ -36,17 +35,17 @@ export class App {
                 if ( Array.isArray(req.files.csvFile) ) {
                     // We need to process a multi part upload
                 } else {
-                    if ( csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
+                    if ( CsvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
                         // Process a single file upload. Do we process async?
+                        CsvProcessor.processCsv(req.files.csvFile, (data: {}[]) => {
+                           res.send(data).status(200);
+                        });
                     } else {
                         res.send('Bad file type').status(400);
                     }
                 }
 
             }
-
-
-            res.send('Ok').status(200);
         });
     }
 }
