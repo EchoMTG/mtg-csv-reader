@@ -27,7 +27,15 @@ export class CsvProcessor {
 
             return fs.createReadStream(tmpfilepath)
                 .pipe(csvParse())
-                .on('data', (data: string[]) => results.push(data))
+                .on('data', (data: string[]) =>  {
+                    //Clean teh data
+                    let cleanData: string[] = data.map((value: string) => {
+                        value = value.replace(/^\'/, '');
+                        value = value.replace(/\'$/, '');
+                        return value;
+                    });
+                    results.push(cleanData);
+                })
                 .on('end', () => {
                     if (results.length > 0 ) {
                         let parsedData: {}[] = parseRawRows(results);
@@ -40,11 +48,13 @@ export class CsvProcessor {
     }
 }
 function detectHeaderRow(inputData: string[]) {
-    inputData.forEach((value:string, index: number, array: string[] ) => {
-        if ( HEADERS.includes(snake(value))) {
+    for( let i =0; i < inputData.length; i++ ) {
+        console.log(`Matching ${snake(inputData[i])}`);
+        if ( HEADERS.includes(snake(inputData[i]))) {
             return true
         }
-    });
+    }
+    console.log('No headers found');
     return false;
 }
 
@@ -67,6 +77,11 @@ function parseRawRows(inputRows: string[][] ): {}[] {
                 });
                 parsedData.push(parsedCard);
             });
+        } else {
+            // We were unable to detect a standard header row.
+            // Lets try best effort data mapping
+            // TODO - Should we throw away the first row because its probably headers we missed
+
         }
         return parsedData;
     } else {
