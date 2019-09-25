@@ -37,8 +37,12 @@ export class App {
                 } else {
                     if ( CsvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
                         // Process a single file upload. Do we process async?
-                        CsvProcessor.processCsv(req.files.csvFile, (data: {}[]) => {
-                           res.send(data).status(200);
+                        CsvProcessor.processCsv(req.files.csvFile, (err,data: {}[]) => {
+                            if (err) {
+                                res.send(err.message).status(500);
+                            } else {
+                                res.send(data).status(200);
+                            }
                         });
                     } else {
                         res.send('Bad file type').status(400);

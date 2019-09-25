@@ -6,7 +6,8 @@
     "lib": ["es2016","dom"],
     "target": "ES2016",
     "strict":true,
-    "experimentalDecorators":true
+    "experimentalDecorators":true,
+    "resolveJsonModule": true
   },
   "exclude": [
     "node_modules",
