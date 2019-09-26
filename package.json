@@ -2,7 +2,7 @@
   "name": "csvReader",
   "version": "1.0.0",
   "description": "uploads a csv returns json",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",

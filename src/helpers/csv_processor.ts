@@ -2,11 +2,18 @@ import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {snake} from "change-case";
-import {HEADERS,BE_REGEX,PARSED_SETS,VALID_CONDITIONS,SUPPORTED_LANGS,SUPPORTED_MIME_TYPES} from "../util/definitions";
+import {
+    HEADERS,
+    BE_REGEX,
+    PARSED_SETS,
+    VALID_CONDITIONS,
+    SUPPORTED_LANGS,
+    SUPPORTED_MIME_TYPES
+} from "../util/definitions";
 
 
 interface ParsedCard {
-    [index: string]: string|boolean
+    [index: string]: string | boolean
 }
 
 interface parsingStatus {
@@ -34,11 +41,11 @@ export class CsvProcessor {
      * @param file
      * @param cb
      */
-    static processCsv(file: fileUpload.UploadedFile, cb: (err: Error|undefined, data: {}[]) => void): void {
+    static processCsv(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: {}[]) => void): void {
         let tmpfilename = new Date().getTime() + '-file.csv';
         let tmpfilepath = 'tmp/' + tmpfilename;
 
-        file.mv(tmpfilepath, function(err) {
+        file.mv(tmpfilepath, function (err) {
             if (err) {
                 cb(err, []);
             }
@@ -49,9 +56,9 @@ export class CsvProcessor {
                 .pipe(csvParse())
                 .on('error', (err: Error) => {
                     // if teh data is an invalid CSV, this will throw an error here
-                  cb(err,[]);
+                    cb(err, []);
                 })
-                .on('data', (data: string[]) =>  {
+                .on('data', (data: string[]) => {
                     //Clean teh data
                     let cleanData: string[] = data.map((value: string) => {
                         value = value
@@ -63,7 +70,7 @@ export class CsvProcessor {
                     results.push(cleanData);
                 })
                 .on('end', () => {
-                    if (results.length > 0 ) {
+                    if (results.length > 0) {
                         let parsedData: {}[] = parseRawRows(results);
                         cb(undefined, parsedData);
                     }
@@ -77,8 +84,8 @@ export class CsvProcessor {
  * @param inputData
  */
 function detectHeaderRow(inputData: string[]) {
-    for( let i =0; i < inputData.length; i++ ) {
-        if ( HEADERS.includes(snake(inputData[i]))) {
+    for (let i = 0; i < inputData.length; i++) {
+        if (HEADERS.includes(snake(inputData[i]))) {
             return true
         }
     }
@@ -91,11 +98,11 @@ function detectHeaderRow(inputData: string[]) {
  * Deterimine best method to use to parse results into cards
  * @param inputRows
  */
-function parseRawRows(inputRows: string[][] ): ParsedCard[] {
-    if ( inputRows.length ) {
+function parseRawRows(inputRows: string[][]): ParsedCard[] {
+    if (inputRows.length) {
         let hasHeader = detectHeaderRow(inputRows[0]);
         let headerRow: string[] | undefined = inputRows.shift();
-        if ( hasHeader && Array.isArray(headerRow) ) {
+        if (hasHeader && Array.isArray(headerRow)) {
             return parseRowsWithHeader(headerRow, inputRows);
         } else {
             return parseRowsWithoutHeader(inputRows);
@@ -136,27 +143,29 @@ function parseRowsWithoutHeader(inputRows: string[][]): ParsedCard[] {
         let parsingStatus = bestEffortDataMap(sampleData);
         inputRows.forEach((row: string[]) => {
             let parsedCard: ParsedCard = {};
-            let blankValueCount: number = row.map((v: string) => { return v === '' }).length;
-            if ( blankValueCount ) {
+            let blankValueCount: number = row.map((v: string) => {
+                return v === ''
+            }).length;
+            if (blankValueCount) {
                 parsingStatus = bestEffortDataMap(row);
             }
 
             // Require AT LEAST Name AND ( Set | set_code )
-            if ( (parsingStatus.name === undefined) || (parsingStatus.expansion === undefined && parsingStatus.set_code === undefined)  ) {
+            if ((parsingStatus.name === undefined) || (parsingStatus.expansion === undefined && parsingStatus.set_code === undefined)) {
                 console.log("Faile to parse a name AND a set/set_code from the card. Skipping");
                 return;
 
             } else {
                 parsedCard['name'] = row[parsingStatus.name];
-                parsedCard['expansion'] = ( parsingStatus.expansion ? row[parsingStatus.expansion] : '');
-                parsedCard['set_code'] = ( parsingStatus.set_code ? row[parsingStatus.set_code] : '');
+                parsedCard['expansion'] = (parsingStatus.expansion ? row[parsingStatus.expansion] : '');
+                parsedCard['set_code'] = (parsingStatus.set_code ? row[parsingStatus.set_code] : '');
             }
 
-            parsedCard['foil'] = ( !!parsingStatus.foil );
-            parsedCard['condition'] = ( parsingStatus.condition ? row[parsingStatus.condition] : '');
-            parsedCard['language'] = ( parsingStatus.language ? row[parsingStatus.language] : 'EN');
-            parsedCard['acquire_date'] = ( parsingStatus.acquire_date ? row[parsingStatus.acquire_date] : '');
-            parsedCard['acquire_price'] = ( parsingStatus.acquire_price ? row[parsingStatus.acquire_price] : '');
+            parsedCard['foil'] = (!!parsingStatus.foil);
+            parsedCard['condition'] = (parsingStatus.condition ? row[parsingStatus.condition] : '');
+            parsedCard['language'] = (parsingStatus.language ? row[parsingStatus.language] : 'EN');
+            parsedCard['acquire_date'] = (parsingStatus.acquire_date ? row[parsingStatus.acquire_date] : '');
+            parsedCard['acquire_price'] = (parsingStatus.acquire_price ? row[parsingStatus.acquire_price] : '');
             parsedData.push(parsedCard);
         });
     }
@@ -168,13 +177,13 @@ function parseRowsWithoutHeader(inputRows: string[][]): ParsedCard[] {
  * @param headerRow: string[] - A list of column names
  * @param data: string[][] - A list of lists each of whom contain the values for each column representing a single card
  */
-function parseRowsWithHeader(headerRow: string[], data: string[][] ): ParsedCard[] {
+function parseRowsWithHeader(headerRow: string[], data: string[][]): ParsedCard[] {
     let parsedData: ParsedCard[] = [];
     data.forEach((row: string[]) => {
         let parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
-            acquired_price:'',
+            acquired_price: '',
             acquired_date: '',
             expansion: '',
             set_code: '',
@@ -194,7 +203,7 @@ function parseRowsWithHeader(headerRow: string[], data: string[][] ): ParsedCard
  * @param data
  */
 function bestEffortDataMap(data: string[]): parsingStatus {
-    let status: parsingStatus = { name: undefined, expansion: undefined, set_code: undefined };
+    let status: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
     data.forEach((value: string, index: number) => {
         if (value === '') {
             return;
@@ -209,16 +218,16 @@ function bestEffortDataMap(data: string[]): parsingStatus {
             status.condition = index;
         } else if (Object.getOwnPropertyNames(PARSED_SETS).includes(value)) {
             status.set_code = index;
-        } else if ( SUPPORTED_LANGS.includes(value) ) {
+        } else if (SUPPORTED_LANGS.includes(value)) {
             status.language = index;
         } else {
             // We might be on Card Name or Set Name
             let allSetNames: string[] = [];
-            Object.getOwnPropertyNames(PARSED_SETS).forEach((value: string ) => {
-               allSetNames.push(PARSED_SETS[value]['name'])
+            Object.getOwnPropertyNames(PARSED_SETS).forEach((value: string) => {
+                allSetNames.push(PARSED_SETS[value]['name'])
             });
 
-            if ( allSetNames.indexOf(value) !== -1 ) {
+            if (allSetNames.indexOf(value) !== -1) {
                 status.expansion = index;
             } else {
                 status.name = index;
