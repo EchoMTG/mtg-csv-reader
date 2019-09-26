@@ -1,6 +1,6 @@
 import * as express from "express"
 import * as fileUpload from "express-fileupload"
-import {CsvProcessor} from "./helpers/csv_processor";
+import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 
 
 export class App {
@@ -29,6 +29,7 @@ export class App {
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            let csvProcessor: CsvProcessor = new CsvProcessor();
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
             } else {
@@ -37,7 +38,7 @@ export class App {
                 } else {
                     if ( CsvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
                         // Process a single file upload. Do we process async?
-                        CsvProcessor.processCsv(req.files.csvFile, (err,data: {}[]) => {
+                        csvProcessor.processCsv(req.files.csvFile, (err,data: CsvProcessorResult) => {
                             if (err) {
                                 res.send(err.message).status(500);
                             } else {
