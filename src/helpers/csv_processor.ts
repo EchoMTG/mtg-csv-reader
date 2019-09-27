@@ -11,6 +11,7 @@ interface ParsedCard {
 
 interface parsingStatus {
     [index: string]: number | undefined;
+
     expansion?: number | undefined;
     set_code?: number | undefined;
     acquire_date?: number | undefined;
@@ -20,6 +21,7 @@ interface parsingStatus {
     language?: number | undefined;
     name?: number | undefined;
 }
+
 export type CsvProcessorResult = {
     errors: string[];
     cards: ParsedCard[];
@@ -30,15 +32,15 @@ export class CsvProcessor {
     headers: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
     cards: ParsedCard[] = [];
     errors: string[] = [];
-    mappedFields: { [index: string]: string}
+    mappedFields: { [index: string]: string }
     readonly appConfig: AppConfig;
 
     constructor(config: AppConfig) {
         this.appConfig = config;
         this.mappedFields = {
             supportedNameHeaders: 'name',
-            supportedDateHeaders: 'acquired_date',
-            supportedPriceHeaders: 'acquired_price',
+            supportedDateHeaders: 'acquire_date',
+            supportedPriceHeaders: 'acquire_price',
             supportedConditionHeaders: 'condition',
             supportedSetHeaders: 'expansion',
             supportedSetCodeHeaders: 'set_code'
@@ -106,7 +108,7 @@ export class CsvProcessor {
 
     /**
      * Loop through the given list of strings to see if ANY of them exist in the list of Supported Headers
-     * @param inputData
+     * @param inputData: string[]
      */
     detectHeaderRow(inputData: string[]) {
         for (let i = 0; i < inputData.length; i++) {
@@ -118,23 +120,35 @@ export class CsvProcessor {
         return false;
     }
 
-    coerceHeaders( header: string, index: number): void {
-        let bestHeader: string = this.findBestHeader(header);
-        this.headers[bestHeader] = index;
+    /**
+     * Sets the best header to use for a given provided header
+     * @param header: string
+     * @param index: number
+     */
+    coerceHeaders(header: string, index: number): void {
+        let bestHeader: string|undefined = this.findBestHeader(header);
+        if ( bestHeader ) {
+            this.headers[bestHeader] = index;
+        }
     }
 
-    findBestHeader(providedHeader: string): string {
-        let bestHeader: string = providedHeader;
+    /**
+     * Try to find the best header for a provided header.
+     * @param providedHeader: string - User provided header
+     * @return bestHEader: string - The best header we could determine for the provided header
+     */
+    findBestHeader(providedHeader: string): string|undefined {
+        let bestHeader: string|undefined = undefined;
         Object.getOwnPropertyNames(this.appConfig).forEach((config: string) => {
-           if ( config.startsWith('supported') ) {
-               if ( Array.isArray(this.appConfig[config] ) ) {
-                   let values = this.appConfig[config] as string[];
-                   if ( values.includes(providedHeader.toUpperCase()) ) {
-                       console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
-                       bestHeader = this.mappedFields[config];
-                   }
-               }
-           }
+            if (config.startsWith('supported')) {
+                if (Array.isArray(this.appConfig[config])) {
+                    let values = this.appConfig[config] as string[];
+                    if (values.includes(providedHeader.toUpperCase())) {
+                        console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
+                        bestHeader = this.mappedFields[config];
+                    }
+                }
+            }
         });
         return bestHeader;
     }
@@ -148,8 +162,8 @@ export class CsvProcessor {
             let hasHeader = this.detectHeaderRow(inputRows[0]);
             let headerRow: string[] | undefined = inputRows.shift();
             if (hasHeader && Array.isArray(headerRow)) {
-                headerRow.forEach((value: string, index:number) => {
-                   this.coerceHeaders(value, index);
+                headerRow.forEach((value: string, index: number) => {
+                    this.coerceHeaders(value, index);
                 });
                 this.parseRowsWithHeader(headerRow, inputRows);
             } else {
@@ -158,14 +172,25 @@ export class CsvProcessor {
         }
     }
 
-    parseSingleCard(details: string[]): ParsedCard {
-        let parsedCard: ParsedCard = {};
+    /**
+     * Parse a single row into a card object
+     * @param details: string[]
+     * @param other_headers: string[] other details we can provide to a card
+     */
+    parseSingleCard(details: string[], other_headers?: string[]): ParsedCard|undefined {
+        let parsedCard: ParsedCard = {
+            foil: false,
+            language: 'EN',
+            acquired_price: '',
+            acquired_date: '',
+            expansion: '',
+            set_code: '',
+            condition: ''
+        };
 
         // Require AT LEAST Name AND ( Set | set_code )
         if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
-            console.log("Faile to parse a name AND a set/set_code from the card. Skipping");
-            // Throw an error because I couldn't parse this card
-            throw new Error(`Unable to parse card: ${details}`);
+            return undefined
 
         } else {
             parsedCard['name'] = details[this.headers.name];
@@ -179,6 +204,15 @@ export class CsvProcessor {
         parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
         parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
 
+        //TODO - Add some functions to include extra passed in columns
+        if (this.appConfig.includeUnknownFields && other_headers) {
+            let columnsAlreadySet = Object.values(this.headers) as number[];
+            other_headers.forEach((header: string, index: number) => {
+                if ( columnsAlreadySet.indexOf(index) === -1 ) {
+                    parsedCard[other_headers[index]] = details[index];
+                }
+            });
+        }
         return parsedCard;
     }
 
@@ -211,7 +245,7 @@ export class CsvProcessor {
              */
             this.bestEffortDataMap(sampleData);
 
-            inputRows.forEach((row: string[]) => {
+            inputRows.forEach((row: string[], i: number) => {
 
                 let blankValueCount: number = row.map((v: string) => {
                     return v === ''
@@ -221,7 +255,9 @@ export class CsvProcessor {
                 }
 
                 let parsedCard = this.parseSingleCard(row);
-                this.cards.push(parsedCard);
+                if ( parsedCard ) {
+                    this.cards.push(parsedCard);
+                }
             });
         }
     }
@@ -233,23 +269,10 @@ export class CsvProcessor {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         data.forEach((row: string[]) => {
-            let parsedCard: ParsedCard = {
-                foil: false,
-                language: 'EN',
-                acquired_price: '',
-                acquired_date: '',
-                expansion: '',
-                set_code: '',
-                condition: ''
-            };
-            // row.forEach((field: string, index: number) => {
-            //     // todo - remove assert
-            //     // parsedCard[headerRow[index]] = field;
-            //     // Require AT LEAST Name AND ( Set | set_code )
-            //     let p
-            // });
-            parsedCard = this.parseSingleCard(row);
-            this.cards.push(parsedCard);
+            let parsedCard = this.parseSingleCard(row, headerRow);
+            if ( parsedCard) {
+                this.cards.push(parsedCard);
+            }
         });
     }
 
@@ -275,7 +298,7 @@ export class CsvProcessor {
             } else if (this.appConfig.supportedLanguages.includes(value)) {
                 this.headers.language = index;
             } else {
-                if (this.appConfig.setNames.includes(value) ) {
+                if (this.appConfig.setNames.includes(value)) {
                     this.headers.expansion = index;
                 } else {
                     this.headers.name = index;

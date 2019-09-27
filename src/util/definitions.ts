@@ -34,6 +34,7 @@ export class AppConfig {
     supportedConditionHeaders: string[];
     supportedSetHeaders: string[];
     supportedSetCodeHeaders: string[];
+    includeUnknownFields: boolean;
     [index: string]: any;
 
     constructor() {
@@ -48,6 +49,7 @@ export class AppConfig {
         if ( Object.keys(config).length ) {
             configuration = Object.assign(new ConfigFile(), config)
         }
+        // This is a bad way to do this. There should be a better way where I can dynamically figure it out
         this.headers = this.getOrDefault(configuration,'headers', DEFAULT_HEADERS);
         this.dateAcqRegex = this.getOrDefault(configuration,'date_acquired_regex', /^(\d{4}|\d{2})\/(\d{2}|\d)\/(\d|\d{2}|\d{4})$/ );
         this.priceAcqRegex = this.getOrDefault(configuration,'price_acquired_regex',/^[0-9]+(?:\.[0-9]{2})?$/ );
@@ -61,6 +63,7 @@ export class AppConfig {
         this.supportedConditionHeaders = this.getOrDefault(configuration,'condition_headers', DEFAULT_CONDITION_HEADERS);
         this.supportedSetHeaders = this.getOrDefault(configuration,'expansion_headers', DEFAULT_SET_HEADERS);
         this.supportedSetCodeHeaders = this.getOrDefault(configuration,'set_code_headers', DEFAULT_SET_CODE_HEADERS);
+        this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
     }
 
     /**
@@ -69,7 +72,7 @@ export class AppConfig {
      * @param key
      * @param defaultValue
      */
-    private getOrDefault(config: ConfigFile, key: string, defaultValue: string[]|RegExp): any {
+    private getOrDefault(config: ConfigFile, key: string, defaultValue: string[]|RegExp|boolean): any {
         if (config.hasOwnProperty(key) && config[key] ) {
             return config[key];
         } else {

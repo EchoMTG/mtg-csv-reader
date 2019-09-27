@@ -41,7 +41,7 @@ export class App {
                         // Process a single file upload. Do we process async?
                         csvProcessor.processCsv(req.files.csvFile, (err,data: CsvProcessorResult) => {
                             if (err) {
-                                res.send(err.message).status(500);
+                                res.send(data).status(400);
                             } else {
                                 res.send(data).status(200);
                             }
