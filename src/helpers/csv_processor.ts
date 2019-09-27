@@ -2,14 +2,7 @@ import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {snake} from "change-case";
-import {
-    HEADERS,
-    BE_REGEX,
-    PARSED_SETS,
-    VALID_CONDITIONS,
-    SUPPORTED_LANGS,
-    SUPPORTED_MIME_TYPES
-} from "../util/definitions";
+import {AppConfig} from "../util/definitions";
 
 
 interface ParsedCard {
@@ -37,20 +30,27 @@ export class CsvProcessor {
     headers: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
     cards: ParsedCard[] = [];
     errors: string[] = [];
-    private allSets: string[] = [];
+    mappedFields: { [index: string]: string}
+    readonly appConfig: AppConfig;
 
-    constructor() {
-        Object.getOwnPropertyNames(PARSED_SETS).forEach((value: string) => {
-            this.allSets.push(PARSED_SETS[value]['name'])
-        });
+    constructor(config: AppConfig) {
+        this.appConfig = config;
+        this.mappedFields = {
+            supportedNameHeaders: 'name',
+            supportedDateHeaders: 'acquired_date',
+            supportedPriceHeaders: 'acquired_price',
+            supportedConditionHeaders: 'condition',
+            supportedSetHeaders: 'expansion',
+            supportedSetCodeHeaders: 'set_code'
+        };
     }
 
     /**
      * Get a list of valid mime/types. This function exists as future proofing in case with ingest XML/JSON from other vendors
      * @param type
      */
-    static isSupportedMimeType(type: string) {
-        return SUPPORTED_MIME_TYPES.includes(type);
+    isSupportedMimeType(type: string) {
+        return this.appConfig.supportedMimeTypes.includes(type);
     }
 
     generateResults(): CsvProcessorResult {
@@ -110,12 +110,33 @@ export class CsvProcessor {
      */
     detectHeaderRow(inputData: string[]) {
         for (let i = 0; i < inputData.length; i++) {
-            if (HEADERS.includes(snake(inputData[i]))) {
+            if (this.appConfig.headers.includes(snake(inputData[i]))) {
                 return true
             }
         }
         console.log('No headers found');
         return false;
+    }
+
+    coerceHeaders( header: string, index: number): void {
+        let bestHeader: string = this.findBestHeader(header);
+        this.headers[bestHeader] = index;
+    }
+
+    findBestHeader(providedHeader: string): string {
+        let bestHeader: string = providedHeader;
+        Object.getOwnPropertyNames(this.appConfig).forEach((config: string) => {
+           if ( config.startsWith('supported') ) {
+               if ( Array.isArray(this.appConfig[config] ) ) {
+                   let values = this.appConfig[config] as string[];
+                   if ( values.includes(providedHeader.toUpperCase()) ) {
+                       console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
+                       bestHeader = this.mappedFields[config];
+                   }
+               }
+           }
+        });
+        return bestHeader;
     }
 
     /**
@@ -128,13 +149,37 @@ export class CsvProcessor {
             let headerRow: string[] | undefined = inputRows.shift();
             if (hasHeader && Array.isArray(headerRow)) {
                 headerRow.forEach((value: string, index:number) => {
-                   this.headers[value] = index;
+                   this.coerceHeaders(value, index);
                 });
                 this.parseRowsWithHeader(headerRow, inputRows);
             } else {
                 this.parseRowsWithoutHeader(inputRows);
             }
         }
+    }
+
+    parseSingleCard(details: string[]): ParsedCard {
+        let parsedCard: ParsedCard = {};
+
+        // Require AT LEAST Name AND ( Set | set_code )
+        if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
+            console.log("Faile to parse a name AND a set/set_code from the card. Skipping");
+            // Throw an error because I couldn't parse this card
+            throw new Error(`Unable to parse card: ${details}`);
+
+        } else {
+            parsedCard['name'] = details[this.headers.name];
+            parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
+            parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
+        }
+
+        parsedCard['foil'] = (!!this.headers.foil);
+        parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
+        parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
+        parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
+        parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
+
+        return parsedCard;
     }
 
     /**
@@ -165,8 +210,9 @@ export class CsvProcessor {
              * I need to be able to guess the Card Name and the Set/Code for it to be valuable
              */
             this.bestEffortDataMap(sampleData);
+
             inputRows.forEach((row: string[]) => {
-                let parsedCard: ParsedCard = {};
+
                 let blankValueCount: number = row.map((v: string) => {
                     return v === ''
                 }).length;
@@ -174,22 +220,7 @@ export class CsvProcessor {
                     this.bestEffortDataMap(row);
                 }
 
-                // Require AT LEAST Name AND ( Set | set_code )
-                if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
-                    console.log("Faile to parse a name AND a set/set_code from the card. Skipping");
-                    return;
-
-                } else {
-                    parsedCard['name'] = row[this.headers.name];
-                    parsedCard['expansion'] = (this.headers.expansion ? row[this.headers.expansion] : '');
-                    parsedCard['set_code'] = (this.headers.set_code ? row[this.headers.set_code] : '');
-                }
-
-                parsedCard['foil'] = (!!this.headers.foil);
-                parsedCard['condition'] = (this.headers.condition ? row[this.headers.condition] : '');
-                parsedCard['language'] = (this.headers.language ? row[this.headers.language] : 'EN');
-                parsedCard['acquire_date'] = (this.headers.acquire_date ? row[this.headers.acquire_date] : '');
-                parsedCard['acquire_price'] = (this.headers.acquire_price ? row[this.headers.acquire_price] : '');
+                let parsedCard = this.parseSingleCard(row);
                 this.cards.push(parsedCard);
             });
         }
@@ -211,10 +242,13 @@ export class CsvProcessor {
                 set_code: '',
                 condition: ''
             };
-            row.forEach((field: string, index: number) => {
-                // todo - remove assert
-                parsedCard[headerRow[index]] = field;
-            });
+            // row.forEach((field: string, index: number) => {
+            //     // todo - remove assert
+            //     // parsedCard[headerRow[index]] = field;
+            //     // Require AT LEAST Name AND ( Set | set_code )
+            //     let p
+            // });
+            parsedCard = this.parseSingleCard(row);
             this.cards.push(parsedCard);
         });
     }
@@ -228,20 +262,20 @@ export class CsvProcessor {
             if (value === '') {
                 return;
             }
-            if (value.match(BE_REGEX.DATE_ACQ_REGEX)) {
+            if (value.match(this.appConfig.dateAcqRegex)) {
                 this.headers.acquire_date = index;
-            } else if (value.match(BE_REGEX.PRICE_ACQ_REGEX)) {
+            } else if (value.match(this.appConfig.priceAcqRegex)) {
                 this.headers.acquire_price = index;
-            } else if (value.match(BE_REGEX.FOIL_REGEX)) {
+            } else if (value.match(this.appConfig.foilRegex)) {
                 this.headers.foil = index;
-            } else if (VALID_CONDITIONS.includes(value)) {
+            } else if (this.appConfig.validConditions.includes(value)) {
                 this.headers.condition = index;
-            } else if (Object.getOwnPropertyNames(PARSED_SETS).includes(value)) {
+            } else if (this.appConfig.setCodes.includes(value)) {
                 this.headers.set_code = index;
-            } else if (SUPPORTED_LANGS.includes(value)) {
+            } else if (this.appConfig.supportedLanguages.includes(value)) {
                 this.headers.language = index;
             } else {
-                if (this.allSets.indexOf(value) !== -1) {
+                if (this.appConfig.setNames.includes(value) ) {
                     this.headers.expansion = index;
                 } else {
                     this.headers.name = index;
