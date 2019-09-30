@@ -67,8 +67,8 @@ export class CsvProcessor {
      * @param cb
      */
     processCsv(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
-        let tmpfilename = new Date().getTime() + '-file.csv';
-        let tmpfilepath = 'tmp/' + tmpfilename;
+        const tmpfilename = new Date().getTime() + '-file.csv';
+        const tmpfilepath = 'tmp/' + tmpfilename;
 
         file.mv(tmpfilepath, (err) => {
             if (err) {
@@ -81,19 +81,19 @@ export class CsvProcessor {
 
             fs.createReadStream(tmpfilepath)
                 .pipe(csvParse())
-                .on('error', (err: Error) => {
+                .on('error', (innerErr: Error) => {
                     // if teh data is an invalid CSV, this will throw an error here
-                    this.errors.push(err.message);
+                    this.errors.push(innerErr.message);
                     cb(err, this.generateResults());
                 })
                 .on('data', (data: string[]) => {
                     //Clean teh data
-                    let cleanData: string[] = data.map((value: string) => {
-                        value = value
+                    const cleanData: string[] = data.map((value: string) => {
+                        const clean = value
                             .replace(/^'/, '')
                             .replace(/'$/, '')
                             .trim();
-                        return value;
+                        return clean;
                     });
                     results.push(cleanData);
                 })
@@ -111,8 +111,8 @@ export class CsvProcessor {
      * @param inputData: string[]
      */
     detectHeaderRow(inputData: string[]) {
-        for (let i = 0; i < inputData.length; i++) {
-            if (this.appConfig.headers.includes(snake(inputData[i]))) {
+        for( const row of inputData ) {
+            if ( this.appConfig.headers.includes(snake(row) ) ) {
                 return true
             }
         }
@@ -126,7 +126,7 @@ export class CsvProcessor {
      * @param index: number
      */
     coerceHeaders(header: string, index: number): void {
-        let bestHeader: string|undefined = this.findBestHeader(header);
+        const bestHeader: string|undefined = this.findBestHeader(header);
         if ( bestHeader ) {
             this.headers[bestHeader] = index;
         }
@@ -142,7 +142,7 @@ export class CsvProcessor {
         Object.getOwnPropertyNames(this.appConfig).forEach((config: string) => {
             if (config.startsWith('supported')) {
                 if (Array.isArray(this.appConfig[config])) {
-                    let values = this.appConfig[config] as string[];
+                    const values = this.appConfig[config] as string[];
                     if (values.includes(providedHeader.toUpperCase())) {
                         console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
                         bestHeader = this.mappedFields[config];
@@ -159,8 +159,8 @@ export class CsvProcessor {
      */
     parseRawRows(inputRows: string[][]): void {
         if (inputRows.length) {
-            let hasHeader = this.detectHeaderRow(inputRows[0]);
-            let headerRow: string[] | undefined = inputRows.shift();
+            const hasHeader = this.detectHeaderRow(inputRows[0]);
+            const headerRow: string[] | undefined = inputRows.shift();
             if (hasHeader && Array.isArray(headerRow)) {
                 headerRow.forEach((value: string, index: number) => {
                     this.coerceHeaders(value, index);
@@ -178,7 +178,7 @@ export class CsvProcessor {
      * @param other_headers: string[] other details we can provide to a card
      */
     parseSingleCard(details: string[], other_headers?: string[]): ParsedCard|undefined {
-        let parsedCard: ParsedCard = {
+        const parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
             acquired_price: '',
@@ -206,7 +206,7 @@ export class CsvProcessor {
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
-            let columnsAlreadySet = Object.values(this.headers) as number[];
+            const columnsAlreadySet = Object.values(this.headers) as number[];
             other_headers.forEach((header: string, index: number) => {
                 if ( columnsAlreadySet.indexOf(index) === -1 ) {
                     parsedCard[other_headers[index]] = details[index];
@@ -235,7 +235,7 @@ export class CsvProcessor {
         // Lets try best effort data mapping
         // TODO - Should we throw away the first row because its probably headers we missed
         // Without headers, were only going to require name/set
-        let sampleData: string[] | undefined = inputRows[0];
+        const sampleData: string[] | undefined = inputRows[0];
         if (sampleData) {
             // We have values we can check.
             // This could use some cleaning, but it works
@@ -247,14 +247,14 @@ export class CsvProcessor {
 
             inputRows.forEach((row: string[], i: number) => {
 
-                let blankValueCount: number = row.map((v: string) => {
+                const blankValueCount: number = row.map((v: string) => {
                     return v === ''
                 }).length;
                 if (blankValueCount) {
                     this.bestEffortDataMap(row);
                 }
 
-                let parsedCard = this.parseSingleCard(row);
+                const parsedCard = this.parseSingleCard(row);
                 if ( parsedCard ) {
                     this.cards.push(parsedCard);
                 }
@@ -269,7 +269,7 @@ export class CsvProcessor {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         data.forEach((row: string[]) => {
-            let parsedCard = this.parseSingleCard(row, headerRow);
+            const parsedCard = this.parseSingleCard(row, headerRow);
             if ( parsedCard) {
                 this.cards.push(parsedCard);
             }

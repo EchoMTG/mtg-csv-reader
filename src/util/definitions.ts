@@ -1,14 +1,14 @@
 import * as mtgSets from "../data/mtg_sets_trimmed.json"
 import * as config from "../../app.json";
-let DEFAULT_NAME_HEADERS: string[] = ['NAME','CARD NAME','CARD'];
-let DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED','ACQUIRED ON','ADDED','ACQUIRED_DATE','DATE_ACQUIRED'];
-let DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE','VALUE','ACQUIRED_VALUE','PRICE_ACQUIRED','ACQUIRED_PRICE'];
-let DEFAULT_CONDITION_HEADERS: string[] = ['CONDITION'];
-let DEFAULT_SET_HEADERS: string[] = ['EXPANSION','SET','PRINTING'];
-let DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE','CODE'];
-let DEFAULT_HEADERS: string[] = ['name','expansion','set_code','date_acquired','price_acquired','condition','foil','language'];
-let DEFAULT_LANGS: string[] = ['EN','GR','FR','SP','CS','IT','JP','CT','KR','RU'];
-let DEFAULT_CONDITIONS: string[] = ['NM','MINT','EX','HP','LP','DMG'];
+const DEFAULT_NAME_HEADERS: string[] = ['NAME','CARD NAME','CARD'];
+const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED','ACQUIRED ON','ADDED','ACQUIRED_DATE','DATE_ACQUIRED'];
+const DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE','VALUE','ACQUIRED_VALUE','PRICE_ACQUIRED','ACQUIRED_PRICE'];
+const DEFAULT_CONDITION_HEADERS: string[] = ['CONDITION'];
+const DEFAULT_SET_HEADERS: string[] = ['EXPANSION','SET','PRINTING'];
+const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE','CODE'];
+const DEFAULT_HEADERS: string[] = ['name','expansion','set_code','date_acquired','price_acquired','condition','foil','language'];
+const DEFAULT_LANGS: string[] = ['EN','GR','FR','SP','CS','IT','JP','CT','KR','RU'];
+const DEFAULT_CONDITIONS: string[] = ['NM','MINT','EX','HP','LP','DMG'];
 
 class ConfigFile {
     [index: string]: string[]|RegExp;
@@ -38,7 +38,7 @@ export class AppConfig {
     [index: string]: any;
 
     constructor() {
-        let sets = Object.assign(new ParsedSets(), mtgSets);
+        const sets = Object.assign(new ParsedSets(), mtgSets);
         Object.keys(sets).forEach((code: string) => {
            this.setCodes.push(code);
            this.setNames.push(sets[code]['name'])
@@ -72,9 +72,9 @@ export class AppConfig {
      * @param key
      * @param defaultValue
      */
-    private getOrDefault(config: ConfigFile, key: string, defaultValue: string[]|RegExp|boolean): any {
-        if (config.hasOwnProperty(key) && config[key] ) {
-            return config[key];
+    private getOrDefault(configuration: ConfigFile, key: string, defaultValue: string[]|RegExp|boolean): any {
+        if (config.hasOwnProperty(key) && configuration[key] ) {
+            return configuration[key];
         } else {
             return defaultValue;
         }

@@ -30,7 +30,7 @@ export class App {
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            let csvProcessor: CsvProcessor = new CsvProcessor(new AppConfig());
+            const csvProcessor: CsvProcessor = new CsvProcessor(new AppConfig());
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
             } else {
