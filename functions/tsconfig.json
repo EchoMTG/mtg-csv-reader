@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "lib": ["es2016","dom"],
+    "target": "ES2016",
+    "strict":true,
+    "experimentalDecorators":true,
+    "resolveJsonModule": true
+  },
+  "exclude": [
+    "../../node_modules"
+  ],
+  "include":[
+    "functions/src/**/*.ts"
+  ]
+}
