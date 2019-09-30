@@ -2,12 +2,12 @@
   "name": "echo-csv",
   "version": "1.0.0",
   "description": "uploads a csv returns json",
-  "main": "dist/index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node lib/index.js",
     "build": "./node_modules/.bin/tsc",
-    "dev": "./node_modules/.bin/ts-node functions/src/index.ts",
-    "lint": "./node_modules/.bin/tslint -c tslint.json 'src/**/*.ts'",
+    "dev": "./node_modules/.bin/ts-node src/index.ts",
+    "lint": "./node_modules/.bin/tslint -p tslint.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -19,10 +19,16 @@
     "csv-parser": "^2.2.0",
     "express": "^4.16.4",
     "express-fileupload": "^1.1.4",
-    "fs": "0.0.1-security",
-    "tslint": "^5.20.0"
+    "firebase": "^7.0.0",
+    "firebase-admin": "^8.6.0",
+    "firebase-functions": "^3.2.0",
+    "fs": "0.0.1-security"
+  },
+  "engines": {
+    "node": "8"
   },
   "devDependencies": {
+    "tslint": "^5.20.0",
     "@types/express": "^4.17.1",
     "@types/express-fileupload": "^1.1.0",
     "ts-node": "^8.4.1",

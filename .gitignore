@@ -5,4 +5,5 @@ dist/
 tmp/
 .firebaserc
 firebase-debug.log
-node_modules
+node_modulesfunctions/lib
+functions/lib/

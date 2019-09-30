@@ -1,5 +1,6 @@
 import app from "./app"
+import * as functions from 'firebase-functions'
 
-app._app.listen(3000, () => {
-    console.log('Listening');
-});
+const echoCsv = functions.https.onRequest(app._app);
+
+export {echoCsv}

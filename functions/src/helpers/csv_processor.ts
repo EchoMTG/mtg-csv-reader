@@ -206,7 +206,7 @@ export class CsvProcessor {
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
-            const columnsAlreadySet = Object.values(this.headers) as number[];
+            const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if ( columnsAlreadySet.indexOf(index) === -1 ) {
                     parsedCard[other_headers[index]] = details[index];

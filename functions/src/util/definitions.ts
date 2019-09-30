@@ -1,5 +1,5 @@
 import * as mtgSets from "../data/mtg_sets_trimmed.json"
-import * as config from "../../app.json";
+import * as config from "../config.json";
 const DEFAULT_NAME_HEADERS: string[] = ['NAME','CARD NAME','CARD'];
 const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED','ACQUIRED ON','ADDED','ACQUIRED_DATE','DATE_ACQUIRED'];
 const DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE','VALUE','ACQUIRED_VALUE','PRICE_ACQUIRED','ACQUIRED_PRICE'];
@@ -11,7 +11,7 @@ const DEFAULT_LANGS: string[] = ['EN','GR','FR','SP','CS','IT','JP','CT','KR','R
 const DEFAULT_CONDITIONS: string[] = ['NM','MINT','EX','HP','LP','DMG'];
 
 class ConfigFile {
-    [index: string]: string[]|RegExp;
+    [index: string]: string[]| RegExp;
 }
 
 class ParsedSets {
