@@ -1,6 +1,8 @@
-node_modules
+functions/node_modules
 .idea
 tmp
 dist/
 tmp/
 .firebaserc
+firebase-debug.log
+node_modules
