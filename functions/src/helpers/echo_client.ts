@@ -4,6 +4,8 @@ import {RateLimiterMemory, RateLimiterQueue, RateLimiterRes} from "rate-limiter-
 import * as https from "https";
 import {Response} from "request";
 import {response} from "express";
+import * as util from "util";
+import * as buffer from "buffer";
 
 type minimumSearchableCard = {
     name: string,
@@ -57,16 +59,19 @@ export class EchoClient {
                             } else {
                                 results.push('Fail')
                             }
+
+                            if ( results.length === batch.length ) {
+                                cb(undefined, results);
+                            }
                         })
                         .catch((err: Error ) => {
                            console.log("ERROR DETECTED IN HTTPS");
-                           throw err;
+                           results.push('Fail');
+                            if ( results.length === batch.length ) {
+                                cb(undefined, results);
+                            }
                         });
                 });
-
-                if ( results.length === batch.length ) {
-                    cb(undefined, results);
-                }
         });
     }
 
@@ -74,23 +79,23 @@ export class EchoClient {
         console.log(`About to query ${this.host}${uri}`);
         let fullUrl: string = `https://${this.host}${uri}`;
         return new Promise((resolve, reject) => {
-            request
-                .get(fullUrl)
-                .on('response', (res: Response) => {
+            request(fullUrl, (err: Error, res: request.Response, body: any) => {
+                if ( err ) {
+                    reject(err);
+                } else {
                     if ( res.statusCode >= 200 && res.statusCode < 400 ) {
-                        let json: EchoResponse = { status: '', message: '' }
+                        let json: EchoResponse = { status:'', message: ''};
                         try {
-                            console.log(res.body);
-                            json = JSON.parse(res.body);
+                            json = JSON.parse(body);
+                            resolve(json);
                         } catch(e) {
                             reject(e);
                         }
-                        resolve(json);
+                    } else {
+                        reject(new Error(`Request failed with code ${res.statusCode}`));
                     }
-                })
-                .on('error', (err: Error) => {
-                    reject(err);
-                })
+                }
+            })
         });
     }
 }
