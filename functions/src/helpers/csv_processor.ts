@@ -119,6 +119,7 @@ export class CsvProcessor {
                         // Query the list of cards
                         echo.queryBatch(this.generateResults().cards, (err: Error| undefined, res: string[] ) => {
                            console.log(`Processing results`);
+                           console.log(res);
                            cb(undefined, this.generateResults());
                         });
                     }
@@ -214,6 +215,7 @@ export class CsvProcessor {
         if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
             return undefined
         } else {
+            // Set the card name
             parsedCard['name'] = details[this.headers.name];
             if ( this.headers.expansion ) {
                 // We may need move the expansion value to set_code
@@ -225,6 +227,10 @@ export class CsvProcessor {
                     parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
                     parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
                 }
+            }
+
+            if ( parsedCard['expansion'] && ! parsedCard['set_code'] ) {
+                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion'] );
             }
         }
 
@@ -332,7 +338,10 @@ export class CsvProcessor {
                 if (this.appConfig.setNames.includes(value)) {
                     this.headers.expansion = index;
                 } else {
-                    this.headers.name = index;
+                    // We only want to detect card name once because it is the map of last resort
+                    if ( this.headers.name === undefined ) {
+                        this.headers.name = index;
+                    }
                 }
             }
         });

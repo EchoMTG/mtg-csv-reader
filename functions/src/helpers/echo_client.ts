@@ -1,7 +1,9 @@
-import {request} from "https";
+import * as request from "request";
+import {IncomingMessage} from "http";
 import {RateLimiterMemory, RateLimiterQueue, RateLimiterRes} from "rate-limiter-flexible";
-import {CsvProcessorResult} from "./csv_processor";
-import * as http from "http";
+import * as https from "https";
+import {Response} from "request";
+import {response} from "express";
 
 type minimumSearchableCard = {
     name: string,
@@ -9,10 +11,24 @@ type minimumSearchableCard = {
     set_code?: string
 }
 
+type EchoResponse = {
+    status: string,
+    message: string
+    match?: {
+        [index: string]: string | null
+    },
+    all_matches?: [
+        {
+            [index: string]: string | null
+        }
+    ]
+}
 
 export class EchoClient {
     rl: RateLimiterMemory;
     queue: RateLimiterQueue;
+    host: string = 'www.echomtg.com';
+
 
     constructor(limitPerSecond: number, maxPoints: number) {
         this.rl = new RateLimiterMemory({points: maxPoints, duration: limitPerSecond, blockDuration: 1});
@@ -31,22 +47,50 @@ export class EchoClient {
             this.queue.removeTokens(1)
                 .then(() => {
                     // If we reach this, we are free to query echo because we are inside rate limit
-                    let uri: string = `?name=${card.name}&set=${card.expansion}`;
+                    let uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
                     // TODO - Change to http.IncomingMessage
-                    this._querySingle(uri, (err: Error | undefined, res: string): void => {
-                        console.log(`I've received a response`);
-                        results.push(res);
-                        if (results.length == batch.length) {
-                            cb(undefined, results);
-                        }
-                    });
+                    this._querySingle(uri)
+                        .then((res: EchoResponse) => {
+                            console.log("Processing result from EchoAPI");
+                            if (res.status === "success") {
+                                results.push('Pass')
+                            } else {
+                                results.push('Fail')
+                            }
+                        })
+                        .catch((err: Error ) => {
+                           console.log("ERROR DETECTED IN HTTPS");
+                           throw err;
+                        });
                 });
+
+                if ( results.length === batch.length ) {
+                    cb(undefined, results);
+                }
         });
     }
 
-    // TODO - Change to http.IncomingMessage
-    _querySingle(uri: string, cb: (err: Error | undefined, res: string) => void) {
-        console.log(`About to query ${uri}`);
-        cb(undefined, uri);
+    _querySingle(uri: string): Promise<EchoResponse> {
+        console.log(`About to query ${this.host}${uri}`);
+        let fullUrl: string = `https://${this.host}${uri}`;
+        return new Promise((resolve, reject) => {
+            request
+                .get(fullUrl)
+                .on('response', (res: Response) => {
+                    if ( res.statusCode >= 200 && res.statusCode < 400 ) {
+                        let json: EchoResponse = { status: '', message: '' }
+                        try {
+                            console.log(res.body);
+                            json = JSON.parse(res.body);
+                        } catch(e) {
+                            reject(e);
+                        }
+                        resolve(json);
+                    }
+                })
+                .on('error', (err: Error) => {
+                    reject(err);
+                })
+        });
     }
 }

@@ -76,6 +76,11 @@ export class AppConfig {
         return this.setNames[index];
     }
 
+    getCodeBySet(set: string) {
+        let index: number = this.setNames.indexOf(set);
+        return this.setCodes[index];
+    }
+
     /**
      *
      * @param config
@@ -89,6 +94,8 @@ export class AppConfig {
             return defaultValue;
         }
     }
+
+
 
 }
 

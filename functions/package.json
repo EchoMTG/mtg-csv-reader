@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/request": "^2.48.3",
     "change-case": "^3.1.0",
     "convert-csv-to-json": "0.0.14",
     "csv-parse": "^4.4.7",
@@ -23,7 +24,8 @@
     "firebase-admin": "^8.6.0",
     "firebase-functions": "^3.2.0",
     "fs": "0.0.1-security",
-    "rate-limiter-flexible": "^1.1.2"
+    "rate-limiter-flexible": "^1.1.2",
+    "request": "^2.88.0"
   },
   "engines": {
     "node": "12"
