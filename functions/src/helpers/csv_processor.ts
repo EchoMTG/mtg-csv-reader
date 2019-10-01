@@ -3,10 +3,21 @@ import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {snake} from "change-case";
 import {AppConfig} from "../util/definitions";
+import {EchoClient} from "./echo_client";
 
 
 interface ParsedCard {
-    [index: string]: string | boolean
+    name: string,
+    expansion: string,
+    acquire_date: string,
+    acquire_price: string,
+    set_code: string,
+    condition: string,
+    language: string,
+    foil: boolean,
+    extra_details: {
+        [index: string]: string
+    }
 }
 
 interface parsingStatus {
@@ -70,6 +81,8 @@ export class CsvProcessor {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = 'tmp/' + tmpfilename;
 
+        console.log(process.cwd());
+
         file.mv(tmpfilepath, (err) => {
             if (err) {
                 // There is a good chance this is a server rror
@@ -99,8 +112,15 @@ export class CsvProcessor {
                 })
                 .on('end', () => {
                     if (results.length > 0) {
+                        // Parse the results
                         this.parseRawRows(results);
-                        cb(undefined, this.generateResults());
+                        // Query the EchoApi to check for its existance
+                        const echo: EchoClient = new EchoClient(1, 1);
+                        // Query the list of cards
+                        echo.queryBatch(this.generateResults().cards, (err: Error| undefined, res: string[] ) => {
+                           console.log(`Processing results`);
+                           cb(undefined, this.generateResults());
+                        });
                     }
                 });
         });
@@ -181,21 +201,31 @@ export class CsvProcessor {
         const parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
-            acquired_price: '',
-            acquired_date: '',
+            acquire_date: '',
+            acquire_price: '',
             expansion: '',
             set_code: '',
-            condition: ''
+            condition: '',
+            name: '',
+            extra_details: {}
         };
 
         // Require AT LEAST Name AND ( Set | set_code )
         if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
             return undefined
-
         } else {
             parsedCard['name'] = details[this.headers.name];
-            parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
-            parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
+            if ( this.headers.expansion ) {
+                // We may need move the expansion value to set_code
+                if ( this.appConfig.setCodes.includes(details[this.headers.expansion] ) ) {
+                    console.log('Coercing EXPANSION to SET_CODE');
+                    parsedCard['set_code'] = details[this.headers.expansion];
+                    parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
+                } else {
+                    parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
+                    parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
+                }
+            }
         }
 
         parsedCard['foil'] = (!!this.headers.foil);
@@ -206,10 +236,11 @@ export class CsvProcessor {
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
+
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if ( columnsAlreadySet.indexOf(index) === -1 ) {
-                    parsedCard[other_headers[index]] = details[index];
+                    parsedCard.extra_details[other_headers[index]] = details[index];
                 }
             });
         }

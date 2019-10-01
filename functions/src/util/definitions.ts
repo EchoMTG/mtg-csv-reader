@@ -18,6 +18,11 @@ class ParsedSets {
     [index: string]: { name: string, code?: string}
 }
 
+type singleSet = {
+    name: string,
+    code?: string
+}
+
 export class AppConfig {
     headers: string[];
     dateAcqRegex: RegExp;
@@ -64,6 +69,11 @@ export class AppConfig {
         this.supportedSetHeaders = this.getOrDefault(configuration,'expansion_headers', DEFAULT_SET_HEADERS);
         this.supportedSetCodeHeaders = this.getOrDefault(configuration,'set_code_headers', DEFAULT_SET_CODE_HEADERS);
         this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
+    }
+
+    getSetByCode(code: string) {
+        let index: number = this.setCodes.indexOf(code);
+        return this.setNames[index];
     }
 
     /**

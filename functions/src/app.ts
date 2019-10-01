@@ -2,6 +2,7 @@ import * as express from "express"
 import * as fileUpload from "express-fileupload"
 import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 import {AppConfig} from "./util/definitions";
+import * as util from "util";
 
 
 export class App {
@@ -21,8 +22,9 @@ export class App {
         console.log('Setting routes');
 
         this._app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            const path = req.baseUrl;
             res.send(`
-            <form action="https://us-central1-echo-csv.cloudfunctions.net/echoCsv/upload" method="post" enctype="multipart/form-data">
+            <form action="${path}/upload" method="post" enctype="multipart/form-data">
               <input name="csvFile" type="file" />
               <input type="submit">
             </form>
