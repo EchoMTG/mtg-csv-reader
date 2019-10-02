@@ -1,23 +1,13 @@
 import * as request from "request";
-import {IncomingMessage} from "http";
 import {RateLimiterMemory, RateLimiterQueue, RateLimiterRes} from "rate-limiter-flexible";
-import * as https from "https";
-import {Response} from "request";
-import {response} from "express";
-import * as util from "util";
-import * as buffer from "buffer";
+import {ParsedCard} from "./csv_processor";
 
-type minimumSearchableCard = {
-    name: string,
-    expansion?: string,
-    set_code?: string
-}
-
-type EchoResponse = {
+export type EchoResponse = {
     status: string,
     message: string
+    card: ParsedCard
     match?: {
-        [index: string]: string | null
+        [index: string]: string
     },
     all_matches?: [
         {
@@ -38,57 +28,38 @@ export class EchoClient {
     }
 
     /**
-     *
+     * Async query echo for a list of cards
      * @param batch
      * @param cb
      */
-    queryBatch(batch: minimumSearchableCard[], cb: (err: Error | undefined, results: string[]) => void): void {
-        let results: string[] = [];
+    async queryBatch(batch: ParsedCard[]): Promise<EchoResponse[]> {
 
-        batch.forEach((card: minimumSearchableCard) => {
-            this.queue.removeTokens(1)
-                .then(() => {
-                    // If we reach this, we are free to query echo because we are inside rate limit
-                    let uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
-                    // TODO - Change to http.IncomingMessage
-                    this._querySingle(uri)
-                        .then((res: EchoResponse) => {
-                            console.log("Processing result from EchoAPI");
-                            if (res.status === "success") {
-                                results.push('Pass')
-                            } else {
-                                results.push('Fail')
-                            }
+        let waitOn: Promise<EchoResponse>[] = batch.map(this._querySingle.bind(this));
 
-                            if ( results.length === batch.length ) {
-                                cb(undefined, results);
-                            }
-                        })
-                        .catch((err: Error ) => {
-                           console.log("ERROR DETECTED IN HTTPS");
-                           results.push('Fail');
-                            if ( results.length === batch.length ) {
-                                cb(undefined, results);
-                            }
-                        });
-                });
-        });
+        return await Promise.all(waitOn);
     }
 
-    _querySingle(uri: string): Promise<EchoResponse> {
+    /**
+     * Query a single URI and return a promise of the parsed result
+     * @param card
+     * @private
+     */
+    _querySingle(card: ParsedCard): Promise<EchoResponse> {
+        let uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
         console.log(`About to query ${this.host}${uri}`);
         let fullUrl: string = `https://${this.host}${uri}`;
         return new Promise((resolve, reject) => {
             request(fullUrl, (err: Error, res: request.Response, body: any) => {
-                if ( err ) {
+                if (err) {
                     reject(err);
                 } else {
-                    if ( res.statusCode >= 200 && res.statusCode < 400 ) {
-                        let json: EchoResponse = { status:'', message: ''};
+                    if (res.statusCode >= 200 && res.statusCode < 400) {
+                        let json: EchoResponse;
                         try {
                             json = JSON.parse(body);
+                            json.card = card;
                             resolve(json);
-                        } catch(e) {
+                        } catch (e) {
                             reject(e);
                         }
                     } else {

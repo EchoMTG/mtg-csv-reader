@@ -3,10 +3,10 @@ import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {snake} from "change-case";
 import {AppConfig} from "../util/definitions";
-import {EchoClient} from "./echo_client";
+import {EchoClient,EchoResponse} from "./echo_client";
 
 
-interface ParsedCard {
+export interface ParsedCard {
     name: string,
     expansion: string,
     acquire_date: string,
@@ -116,12 +116,20 @@ export class CsvProcessor {
                         this.parseRawRows(results);
                         // Query the EchoApi to check for its existance
                         const echo: EchoClient = new EchoClient(1, 1);
-                        // Query the list of cards
-                        echo.queryBatch(this.generateResults().cards, (err: Error| undefined, res: string[] ) => {
-                           console.log(`Processing results`);
-                           console.log(res);
-                           cb(undefined, this.generateResults());
-                        });
+
+                        echo.queryBatch(this.generateResults().cards)
+                            .then( (results: EchoResponse[] ) => {
+                                console.log("All requests returned");
+                                results.forEach((res: EchoResponse) => {
+                                    console.log(res);
+                                    if ( res.status === "success" ) {
+                                        if ( res.match ) {
+                                            res.card.extra_details['echo_id'] = res.match['id'];
+                                        }
+                                    }
+                                });
+                                cb(undefined, this.generateResults());
+                            });
                     }
                 });
         });
