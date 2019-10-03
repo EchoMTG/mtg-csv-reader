@@ -33,9 +33,7 @@ export class EchoClient {
      * @param cb
      */
     async queryBatch(batch: ParsedCard[]): Promise<EchoResponse[]> {
-
         let waitOn: Promise<EchoResponse>[] = batch.map(this._querySingle.bind(this));
-
         return await Promise.all(waitOn);
     }
 

@@ -3,7 +3,7 @@ import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {snake} from "change-case";
 import {AppConfig} from "../util/definitions";
-import {EchoClient,EchoResponse} from "./echo_client";
+import {EchoClient, EchoResponse} from "./echo_client";
 
 
 export interface ParsedCard {
@@ -118,12 +118,12 @@ export class CsvProcessor {
                         const echo: EchoClient = new EchoClient(1, 1);
 
                         echo.queryBatch(this.generateResults().cards)
-                            .then( (results: EchoResponse[] ) => {
+                            .then((results: EchoResponse[]) => {
                                 console.log("All requests returned");
                                 results.forEach((res: EchoResponse) => {
                                     console.log(res);
-                                    if ( res.status === "success" ) {
-                                        if ( res.match ) {
+                                    if (res.status === "success") {
+                                        if (res.match) {
                                             res.card.extra_details['echo_id'] = res.match['id'];
                                         }
                                     }
@@ -140,8 +140,8 @@ export class CsvProcessor {
      * @param inputData: string[]
      */
     detectHeaderRow(inputData: string[]) {
-        for( const row of inputData ) {
-            if ( this.appConfig.headers.includes(snake(row) ) ) {
+        for (const row of inputData) {
+            if (this.appConfig.headers.includes(snake(row))) {
                 return true
             }
         }
@@ -155,8 +155,8 @@ export class CsvProcessor {
      * @param index: number
      */
     coerceHeaders(header: string, index: number): void {
-        const bestHeader: string|undefined = this.findBestHeader(header);
-        if ( bestHeader ) {
+        const bestHeader: string | undefined = this.findBestHeader(header);
+        if (bestHeader) {
             this.headers[bestHeader] = index;
         }
     }
@@ -166,8 +166,8 @@ export class CsvProcessor {
      * @param providedHeader: string - User provided header
      * @return bestHEader: string - The best header we could determine for the provided header
      */
-    findBestHeader(providedHeader: string): string|undefined {
-        let bestHeader: string|undefined = undefined;
+    findBestHeader(providedHeader: string): string | undefined {
+        let bestHeader: string | undefined = undefined;
         Object.getOwnPropertyNames(this.appConfig).forEach((config: string) => {
             if (config.startsWith('supported')) {
                 if (Array.isArray(this.appConfig[config])) {
@@ -206,7 +206,7 @@ export class CsvProcessor {
      * @param details: string[]
      * @param other_headers: string[] other details we can provide to a card
      */
-    parseSingleCard(details: string[], other_headers?: string[]): ParsedCard|undefined {
+    parseSingleCard(details: string[], other_headers?: string[]): ParsedCard | undefined {
         const parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
@@ -225,9 +225,9 @@ export class CsvProcessor {
         } else {
             // Set the card name
             parsedCard['name'] = details[this.headers.name];
-            if ( this.headers.expansion ) {
+            if (this.headers.expansion) {
                 // We may need move the expansion value to set_code
-                if ( this.appConfig.setCodes.includes(details[this.headers.expansion] ) ) {
+                if (this.appConfig.setCodes.includes(details[this.headers.expansion])) {
                     console.log('Coercing EXPANSION to SET_CODE');
                     parsedCard['set_code'] = details[this.headers.expansion];
                     parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
@@ -237,8 +237,8 @@ export class CsvProcessor {
                 }
             }
 
-            if ( parsedCard['expansion'] && ! parsedCard['set_code'] ) {
-                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion'] );
+            if (parsedCard['expansion'] && !parsedCard['set_code']) {
+                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
             }
         }
 
@@ -253,11 +253,12 @@ export class CsvProcessor {
 
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
-                if ( columnsAlreadySet.indexOf(index) === -1 ) {
+                if (columnsAlreadySet.indexOf(index) === -1) {
                     parsedCard.extra_details[other_headers[index]] = details[index];
                 }
             });
         }
+
         return parsedCard;
     }
 
@@ -300,7 +301,7 @@ export class CsvProcessor {
                 }
 
                 const parsedCard = this.parseSingleCard(row);
-                if ( parsedCard ) {
+                if (parsedCard) {
                     this.cards.push(parsedCard);
                 }
             });
@@ -315,7 +316,7 @@ export class CsvProcessor {
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         data.forEach((row: string[]) => {
             const parsedCard = this.parseSingleCard(row, headerRow);
-            if ( parsedCard) {
+            if (parsedCard) {
                 this.cards.push(parsedCard);
             }
         });
@@ -347,7 +348,7 @@ export class CsvProcessor {
                     this.headers.expansion = index;
                 } else {
                     // We only want to detect card name once because it is the map of last resort
-                    if ( this.headers.name === undefined ) {
+                    if (this.headers.name === undefined) {
                         this.headers.name = index;
                     }
                 }
