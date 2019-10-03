@@ -46,14 +46,22 @@ Header names will be converted to snake case. This means you could use SetCode/s
 * Price Acquired: A number, optionally followed by a decimal and 2 more numbers
 * Date Acquired: Date in format: YYYY/MM/DD OR YYYY/M/D OR MM/DD/YYYY OR M/D/YYYY
 
-## Testing 
+## Running
 
-From root directory in terminal
+To install all requied libraries
 
-`npm install`
+`npm install --prefix functions`
 
-`npm run dev`
+To run the code in development mode:
 
-open browser to `http://localhost:3000/`
+`npm run --prefix functions dev`
+
+To build the code:
+
+`npm run --prefix functions build`
+
+To deploy the code to firebase:
+
+`firebase deploy --only functions` 
 
 select CSV to upload, click submit

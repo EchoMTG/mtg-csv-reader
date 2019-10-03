@@ -33,7 +33,7 @@ export class EchoClient {
      * @param cb
      */
     async queryBatch(batch: ParsedCard[]): Promise<EchoResponse[]> {
-        let waitOn: Promise<EchoResponse>[] = batch.map(this._querySingle.bind(this));
+        const waitOn: Promise<EchoResponse>[] = batch.map(this._querySingle.bind(this));
         return await Promise.all(waitOn);
     }
 
@@ -43,9 +43,9 @@ export class EchoClient {
      * @private
      */
     _querySingle(card: ParsedCard): Promise<EchoResponse> {
-        let uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
+        const uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
         console.log(`About to query ${this.host}${uri}`);
-        let fullUrl: string = `https://${this.host}${uri}`;
+        const fullUrl: string = `https://${this.host}${uri}`;
         return new Promise((resolve, reject) => {
             request(fullUrl, (err: Error, res: request.Response, body: any) => {
                 if (err) {

@@ -18,11 +18,6 @@ class ParsedSets {
     [index: string]: { name: string, code?: string}
 }
 
-type singleSet = {
-    name: string,
-    code?: string
-}
-
 export class AppConfig {
     headers: string[];
     dateAcqRegex: RegExp;
@@ -72,12 +67,12 @@ export class AppConfig {
     }
 
     getSetByCode(code: string) {
-        let index: number = this.setCodes.indexOf(code);
+        const index: number = this.setCodes.indexOf(code);
         return this.setNames[index];
     }
 
     getCodeBySet(set: string) {
-        let index: number = this.setNames.indexOf(set);
+        const index: number = this.setNames.indexOf(set);
         return this.setCodes[index];
     }
 

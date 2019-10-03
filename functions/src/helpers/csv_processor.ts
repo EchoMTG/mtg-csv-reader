@@ -118,9 +118,9 @@ export class CsvProcessor {
                         const echo: EchoClient = new EchoClient(1, 1);
 
                         echo.queryBatch(this.generateResults().cards)
-                            .then((results: EchoResponse[]) => {
+                            .then((echoResults: EchoResponse[]) => {
                                 console.log("All requests returned");
-                                results.forEach((res: EchoResponse) => {
+                                echoResults.forEach((res: EchoResponse) => {
                                     console.log(res);
                                     if (res.status === "success") {
                                         if (res.match) {
@@ -129,6 +129,11 @@ export class CsvProcessor {
                                     }
                                 });
                                 cb(undefined, this.generateResults());
+                            })
+                            .catch((rErr: Error ) => {
+                               // There was a rejection. Since echo seems to always return 200 assuming its up
+                               console.log(`Error querying Echo: ${rErr.message}`);
+                               cb(err, this.generateResults());
                             });
                     }
                 });
@@ -303,6 +308,8 @@ export class CsvProcessor {
                 const parsedCard = this.parseSingleCard(row);
                 if (parsedCard) {
                     this.cards.push(parsedCard);
+                } else {
+                    this.errors.push(`Unable to parse row: ${i}: ${row}`);
                 }
             });
         }
@@ -314,10 +321,12 @@ export class CsvProcessor {
      * @param data: string[][] - A list of lists each of whom contain the values for each column representing a single card
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
-        data.forEach((row: string[]) => {
+        data.forEach((row: string[], index: number) => {
             const parsedCard = this.parseSingleCard(row, headerRow);
             if (parsedCard) {
                 this.cards.push(parsedCard);
+            } else {
+                this.errors.push(`Unable to parse row: ${index}: ${row}`)
             }
         });
     }
