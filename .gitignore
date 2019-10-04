@@ -7,3 +7,5 @@ tmp/
 firebase-debug.log
 node_modulesfunctions/lib
 functions/lib/
+node_modules/
+lib/

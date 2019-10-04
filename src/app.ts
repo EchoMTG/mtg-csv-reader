@@ -2,7 +2,7 @@ import * as express from "express"
 import * as fileUpload from "express-fileupload"
 import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 import {AppConfig} from "./util/definitions";
-import * as util from "util";
+
 
 
 export class App {
@@ -16,6 +16,7 @@ export class App {
 
     private setMiddleware() {
         this._app.use(fileUpload());
+        // this._app.use(fileParser);
     }
 
     setTemplateRoutes(): void {
