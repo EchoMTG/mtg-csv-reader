@@ -1,7 +1,9 @@
 import * as express from "express"
-import * as fileUpload from "express-fileupload"
+// import * as fileUpload from "express-fileupload"
 import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 import {AppConfig} from "./util/definitions";
+import {buildFileUploades, mimicUpload} from "./middleware/gcf";
+import {UploadedFile} from "express-fileupload";
 
 
 
@@ -15,8 +17,9 @@ export class App {
     }
 
     private setMiddleware() {
-        this._app.use(fileUpload());
-        // this._app.use(fileParser);
+        // this._app.use(fileUpload());
+        this._app.use(buildFileUploades);
+        this._app.use(mimicUpload);
     }
 
     setTemplateRoutes(): void {
@@ -37,8 +40,21 @@ export class App {
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
             } else {
+                console.log("Processing");
                 if ( Array.isArray(req.files.csvFile) ) {
                     // We need to process a multi part upload
+                    let file: UploadedFile = req.files.csvFile[0];
+                    if ( csvProcessor.isSupportedMimeType(file.mimetype) ) {
+                        csvProcessor.processCsv(file, (err,data: CsvProcessorResult) => {
+                            if (err) {
+                                res.send(data).status(400);
+                            } else {
+                                res.send(data).status(200);
+                            }
+                        });
+                    } else {
+                        res.send('Bad file type').status(400);
+                    }
                 } else {
                     if ( csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
                         // Process a single file upload. Do we process async?

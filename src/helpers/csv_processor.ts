@@ -43,7 +43,7 @@ export class CsvProcessor {
     headers: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
     cards: ParsedCard[] = [];
     errors: string[] = [];
-    mappedFields: { [index: string]: string }
+    mappedFields: { [index: string]: string };
     readonly appConfig: AppConfig;
 
     constructor(config: AppConfig) {
@@ -79,18 +79,23 @@ export class CsvProcessor {
      */
     processCsv(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
         const tmpfilename = new Date().getTime() + '-file.csv';
-        const tmpfilepath = 'tmp/' + tmpfilename;
+        const tmpfilepath = '/tmp/' + tmpfilename;
 
-        console.log(process.cwd());
+        console.log(file.tempFilePath);
+        console.log(file.name);
 
         file.mv(tmpfilepath, (err) => {
             if (err) {
+                console.log("Error in move");
+                console.log(err);
                 // There is a good chance this is a server rror
-                this.errors.push(err.msg);
+                this.errors.push(err);
                 cb(err, this.generateResults());
             }
 
             const results: string[][] = [];
+
+            console.log(file.data.toString());
 
             fs.createReadStream(tmpfilepath)
                 .pipe(csvParse())
@@ -135,6 +140,8 @@ export class CsvProcessor {
                                console.log(`Error querying Echo: ${rErr.message}`);
                                cb(err, this.generateResults());
                             });
+                    } else {
+                        cb(undefined, this.generateResults());
                     }
                 });
         });

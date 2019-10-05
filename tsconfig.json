@@ -7,9 +7,11 @@
     "target": "ES2017",
     "strict":true,
     "experimentalDecorators":true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": [ "./type_overrides", "./node_modules/@types"]
   },
   "exclude": [
     "./node_modules",
+    "./type_overrides"
   ]
 }
