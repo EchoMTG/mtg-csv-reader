@@ -4,7 +4,7 @@ import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 import {AppConfig} from "./util/definitions";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
-
+import * as cors from "cors";
 
 
 export class App {
@@ -23,19 +23,21 @@ export class App {
     }
 
     setTemplateRoutes(): void {
-        console.log('Setting routes');
-
+        let opts = {
+            origin: 'https://*.echomtg.com'
+        };
         this._app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             const path = req.baseUrl;
             res.send(`
-            <form action="${path}/upload" method="post" enctype="multipart/form-data">
+            <form action="https://us-central1-echo-csv.cloudfunctions.net/echo-csv/upload" method="post" enctype="multipart/form-data">
               <input name="csvFile" type="file" />
               <input type="submit">
             </form>
         `).status(200);
         });
 
-        this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        this._app.post('/upload', cors(opts),(req: express.Request, res: express.Response, next: express.NextFunction) => {
+            res.set('Access-Control-Allow-Origin', '*');
             const csvProcessor: CsvProcessor = new CsvProcessor(new AppConfig());
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
@@ -69,7 +71,6 @@ export class App {
                         res.send('Bad file type').status(400);
                     }
                 }
-
             }
         });
     }

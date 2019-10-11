@@ -14,9 +14,8 @@ interface RawBodyRequest {
 type rawBodyRequest = Request & RawBodyRequest;
 
 let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
-    console.log("Raw body:");
-    console.log(req.rawBody);
     if(req.rawBody === undefined && req.method === 'POST' && req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')){
+        console.log('getting the raw body for some reason');
         getRawBody(req, {
             length: req.headers['content-length'],
             limit: '10mb',
@@ -27,17 +26,16 @@ let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
                 return next(err);
             }
             req.rawBody = string;
-            next()
+            next();
         })
     } else {
-        next()
+        return next();
     }
 };
 
 let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
     if (req.method === 'POST' && req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
         const busboy = new Busboy({ headers: req.headers });
-
 
         req.files = {
             csvFile: []
@@ -83,6 +81,8 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
         });
 
         busboy.end(req.rawBody);
+    } else {
+        return next();
     }
 };
 
