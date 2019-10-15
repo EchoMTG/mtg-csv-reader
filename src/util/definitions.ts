@@ -1,5 +1,6 @@
-import * as mtgSets from "../data/mtg_sets_trimmed.json"
 import * as config from "../config.json";
+import * as request from "request";
+import {Response} from "request";
 const DEFAULT_NAME_HEADERS: string[] = ['NAME','CARD NAME','CARD'];
 const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED','ACQUIRED ON','ADDED','ACQUIRED_DATE','DATE_ACQUIRED'];
 const DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE','VALUE','ACQUIRED_VALUE','PRICE_ACQUIRED','ACQUIRED_PRICE'];
@@ -9,6 +10,7 @@ const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE','CODE'];
 const DEFAULT_HEADERS: string[] = ['name','expansion','set_code','date_acquired','price_acquired','condition','foil','language'];
 const DEFAULT_LANGS: string[] = ['EN','GR','FR','SP','CS','IT','JP','CT','KR','RU'];
 const DEFAULT_CONDITIONS: string[] = ['NM','MINT','EX','HP','LP','DMG'];
+
 
 class ConfigFile {
     [index: string]: string[]| RegExp;
@@ -37,13 +39,13 @@ export class AppConfig {
     includeUnknownFields: boolean;
     [index: string]: any;
 
-    constructor() {
-        const sets = Object.assign(new ParsedSets(), mtgSets);
-        Object.keys(sets).forEach((code: string) => {
-           this.setCodes.push(code);
-           this.setNames.push(sets[code]['name'])
-        });
-
+     constructor() {
+        //const sets = Object.assign(new ParsedSets(), mtgSets);
+        // Object.keys(sets).forEach((code: string) => {
+        //    this.setCodes.push(code);
+        //    this.setNames.push(sets[code]['name'])
+        // });
+        this.getSetDeta();
         let configuration: ConfigFile = new ConfigFile();
 
         if ( Object.keys(config).length ) {
@@ -74,6 +76,23 @@ export class AppConfig {
     getCodeBySet(set: string) {
         const index: number = this.setNames.indexOf(set);
         return this.setCodes[index];
+    }
+
+    /**
+     * Gather the set data from Echo so it doesn't need to be store locally
+     *
+     */
+    private async getSetDeta() {
+         await request('https://dev.echomtg.com/api/data/set_reference/', (error: any, response: Response, body: any): void => {
+           if ( error ) {
+               console.log("Unable to fetch set data");
+               return;
+           } else {
+               const data: { sets: { [index: string]: string }} = JSON.parse(body);
+               this.setCodes = Object.keys(data.sets);
+               this.setNames = Object.values(data.sets);
+           }
+        });
     }
 
     /**

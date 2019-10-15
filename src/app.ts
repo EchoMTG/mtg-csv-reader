@@ -9,11 +9,13 @@ import * as cors from "cors";
 
 export class App {
     _app: express.Application;
+    _config: AppConfig;
 
     constructor() {
         this._app = express();
         this.setMiddleware();
         this.setTemplateRoutes();
+        this._config = new AppConfig();
     }
 
     private setMiddleware() {
@@ -23,26 +25,22 @@ export class App {
     }
 
     setTemplateRoutes(): void {
-        let opts = {
-            origin: 'https://*.echomtg.com'
-        };
         this._app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             const path = req.baseUrl;
             res.send(`
-            <form action="https://us-central1-echo-csv.cloudfunctions.net/echo-csv/upload" method="post" enctype="multipart/form-data">
+            <form action="/upload" method="post" enctype="multipart/form-data">
               <input name="csvFile" type="file" />
               <input type="submit">
             </form>
         `).status(200);
         });
 
-        this._app.post('/upload', cors(opts),(req: express.Request, res: express.Response, next: express.NextFunction) => {
+        this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             res.set('Access-Control-Allow-Origin', '*');
-            const csvProcessor: CsvProcessor = new CsvProcessor(new AppConfig());
+            const csvProcessor: CsvProcessor = new CsvProcessor(this._config);
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
             } else {
-                console.log("Processing");
                 if ( Array.isArray(req.files.csvFile) ) {
                     // We need to process a multi part upload
                     let file: UploadedFile = req.files.csvFile[0];

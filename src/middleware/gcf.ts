@@ -48,6 +48,7 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
         busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
             const tmpdir = os.tmpdir();
             const filepath = path.join(tmpdir, filename);
+            console.log("Opening temp");
             let fileBuffer = fs.createWriteStream(filepath);
             let fileSize = 0;
 
@@ -61,7 +62,7 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
                 const file_object = fileUpload.fileFactory({
                     name: filename,
                     encoding: encoding,
-                    mimetype: mimetype,
+                    mimetype: 'text/csv',
                     buffer: Buffer.concat([]),
                     size: fileSize,
                     truncated: false,
@@ -70,7 +71,7 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
                 }, {useTempFiles: true, createParentPath: true});
 
                 if ( req.files ) {
-                    if ( Array.isArray(req.files.csvFile) ) {
+                    if (Array.isArray(req.files.csvFile)) {
                         req.files.csvFile.push(file_object);
                     } else {
                         req.files.csvFile = file_object;

@@ -1,6 +1,7 @@
 import * as request from "request";
 import {RateLimiterMemory, RateLimiterQueue, RateLimiterRes} from "rate-limiter-flexible";
 import {ParsedCard} from "./csv_processor";
+import {Writable} from "stream";
 
 export type EchoResponse = {
     status: string,

@@ -106,11 +106,13 @@ export class CsvProcessor {
                 })
                 .on('data', (data: string[]) => {
                     //Clean teh data
+                    console.log(data);
                     const cleanData: string[] = data.map((value: string) => {
                         const clean = value
                             .replace(/^'/, '')
                             .replace(/'$/, '')
                             .trim();
+
                         return clean;
                     });
                     results.push(cleanData);
@@ -270,7 +272,6 @@ export class CsvProcessor {
                 }
             });
         }
-
         return parsedCard;
     }
 
@@ -313,6 +314,8 @@ export class CsvProcessor {
                 }
 
                 const parsedCard = this.parseSingleCard(row);
+
+
                 if (parsedCard) {
                     this.cards.push(parsedCard);
                 } else {
