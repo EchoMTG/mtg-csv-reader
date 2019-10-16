@@ -1,7 +1,6 @@
 import * as request from "request";
-import {RateLimiterMemory, RateLimiterQueue, RateLimiterRes} from "rate-limiter-flexible";
-import {ParsedCard} from "./csv_processor";
-import {Writable} from "stream";
+import {RateLimiterMemory, RateLimiterQueue} from "rate-limiter-flexible";
+import {ParsedCard} from "./card_parser";
 
 export type EchoResponse = {
     status: string,
@@ -44,8 +43,7 @@ export class EchoClient {
      * @private
      */
     _querySingle(card: ParsedCard): Promise<EchoResponse> {
-        const uri: string = `/api/search/individual?name=${card.name}&set=${card.expansion}`;
-        console.log(`About to query ${this.host}${uri}`);
+        const uri: string = `/api/search/individual?name=${card.name}&set=${card.set_code}`;
         const fullUrl: string = `https://${this.host}${uri}`;
         return new Promise((resolve, reject) => {
             request(fullUrl, (err: Error, res: request.Response, body: any) => {

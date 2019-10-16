@@ -1,37 +1,9 @@
 import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
-import {snake} from "change-case";
 import {AppConfig} from "../util/definitions";
 import {EchoClient, EchoResponse} from "./echo_client";
-
-
-export interface ParsedCard {
-    name: string,
-    expansion: string,
-    acquire_date: string,
-    acquire_price: string,
-    set_code: string,
-    condition: string,
-    language: string,
-    foil: boolean,
-    extra_details: {
-        [index: string]: string
-    }
-}
-
-interface parsingStatus {
-    [index: string]: number | undefined;
-
-    expansion?: number | undefined;
-    set_code?: number | undefined;
-    acquire_date?: number | undefined;
-    acquire_price?: number | undefined;
-    foil?: number | undefined;
-    condition?: number | undefined;
-    language?: number | undefined;
-    name?: number | undefined;
-}
+import {CardParser, ParsedCard, parsingStatus} from "./card_parser";
 
 export type CsvProcessorResult = {
     errors: string[];
@@ -40,14 +12,15 @@ export type CsvProcessorResult = {
 }
 
 export class CsvProcessor {
-    headers: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
     cards: ParsedCard[] = [];
     errors: string[] = [];
     mappedFields: { [index: string]: string };
-    readonly appConfig: AppConfig;
+    cardParser: CardParser;
+    supportedMimeTypes: string[];
 
     constructor(config: AppConfig) {
-        this.appConfig = config;
+        this.cardParser = new CardParser(config);
+        this.supportedMimeTypes = config.supportedMimeTypes;
         this.mappedFields = {
             supportedNameHeaders: 'name',
             supportedDateHeaders: 'acquire_date',
@@ -63,12 +36,12 @@ export class CsvProcessor {
      * @param type
      */
     isSupportedMimeType(type: string) {
-        return this.appConfig.supportedMimeTypes.includes(type);
+        return this.supportedMimeTypes.includes(type);
     }
 
     generateResults(): CsvProcessorResult {
         return {
-            errors: this.errors, headers: this.headers, cards: this.cards
+            errors: this.errors, headers: this.cardParser.headers, cards: this.cards
         }
     }
 
@@ -125,27 +98,29 @@ export class CsvProcessor {
                         const echo: EchoClient = new EchoClient(1, 1);
 
                         echo.queryBatch(this.generateResults().cards)
-                            .then((echoResults: EchoResponse[]) => {
-                                console.log("All requests returned");
-                                echoResults.forEach((res: EchoResponse) => {
-                                    console.log(res);
-                                    if (res.status === "success") {
-                                        if (res.match) {
-                                            res.card.extra_details['echo_id'] = res.match['id'];
-                                        }
-                                    }
-                                });
-                                cb(undefined, this.generateResults());
-                            })
+                            .then(this.handleEchoResults.bind(this))
                             .catch((rErr: Error ) => {
                                // There was a rejection. Since echo seems to always return 200 assuming its up
                                console.log(`Error querying Echo: ${rErr.message}`);
                                cb(err, this.generateResults());
-                            });
+                            })
+                            .finally(() => cb(undefined, this.generateResults()));
                     } else {
                         cb(undefined, this.generateResults());
                     }
                 });
+        });
+    }
+
+    handleEchoResults(echoResults: EchoResponse[]): void {
+        console.log("All requests returned");
+        echoResults.forEach((res: EchoResponse) => {
+            console.log(res);
+            if (res.status === "success") {
+                if (res.match) {
+                    res.card.extra_details['echo_id'] = res.match['id'];
+                }
+            }
         });
     }
 
@@ -155,7 +130,7 @@ export class CsvProcessor {
      */
     detectHeaderRow(inputData: string[]) {
         for (const row of inputData) {
-            if (this.appConfig.headers.includes(snake(row))) {
+            if (this.cardParser.isHeader(row)) {
                 return true
             }
         }
@@ -171,7 +146,7 @@ export class CsvProcessor {
     coerceHeaders(header: string, index: number): void {
         const bestHeader: string | undefined = this.findBestHeader(header);
         if (bestHeader) {
-            this.headers[bestHeader] = index;
+            this.cardParser.headers[bestHeader] = index;
         }
     }
 
@@ -182,10 +157,10 @@ export class CsvProcessor {
      */
     findBestHeader(providedHeader: string): string | undefined {
         let bestHeader: string | undefined = undefined;
-        Object.getOwnPropertyNames(this.appConfig).forEach((config: string) => {
+        Object.getOwnPropertyNames(this.cardParser.appConfig).forEach((config: string) => {
             if (config.startsWith('supported')) {
-                if (Array.isArray(this.appConfig[config])) {
-                    const values = this.appConfig[config] as string[];
+                if (Array.isArray(this.cardParser.appConfig[config])) {
+                    const values = this.cardParser.appConfig[config] as string[];
                     if (values.includes(providedHeader.toUpperCase())) {
                         console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
                         bestHeader = this.mappedFields[config];
@@ -213,66 +188,6 @@ export class CsvProcessor {
                 this.parseRowsWithoutHeader(inputRows);
             }
         }
-    }
-
-    /**
-     * Parse a single row into a card object
-     * @param details: string[]
-     * @param other_headers: string[] other details we can provide to a card
-     */
-    parseSingleCard(details: string[], other_headers?: string[]): ParsedCard | undefined {
-        const parsedCard: ParsedCard = {
-            foil: false,
-            language: 'EN',
-            acquire_date: '',
-            acquire_price: '',
-            expansion: '',
-            set_code: '',
-            condition: '',
-            name: '',
-            extra_details: {}
-        };
-
-        // Require AT LEAST Name AND ( Set | set_code )
-        if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
-            return undefined
-        } else {
-            // Set the card name
-            parsedCard['name'] = details[this.headers.name];
-            if (this.headers.expansion) {
-                // We may need move the expansion value to set_code
-                if (this.appConfig.setCodes.includes(details[this.headers.expansion])) {
-                    console.log('Coercing EXPANSION to SET_CODE');
-                    parsedCard['set_code'] = details[this.headers.expansion];
-                    parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
-                } else {
-                    parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
-                    parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
-                }
-            }
-
-            if (parsedCard['expansion'] && !parsedCard['set_code']) {
-                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
-            }
-        }
-
-        parsedCard['foil'] = (!!this.headers.foil);
-        parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
-        parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
-        parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
-        parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
-
-        //TODO - Add some functions to include extra passed in columns
-        if (this.appConfig.includeUnknownFields && other_headers) {
-
-            const columnsAlreadySet = Object.values(this.headers);
-            other_headers.forEach((header: string, index: number) => {
-                if (columnsAlreadySet.indexOf(index) === -1) {
-                    parsedCard.extra_details[other_headers[index]] = details[index];
-                }
-            });
-        }
-        return parsedCard;
     }
 
     /**
@@ -313,7 +228,7 @@ export class CsvProcessor {
                     this.bestEffortDataMap(row);
                 }
 
-                const parsedCard = this.parseSingleCard(row);
+                const parsedCard = this.cardParser.parseSingleCard(row);
 
 
                 if (parsedCard) {
@@ -332,7 +247,7 @@ export class CsvProcessor {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         data.forEach((row: string[], index: number) => {
-            const parsedCard = this.parseSingleCard(row, headerRow);
+            const parsedCard = this.cardParser.parseSingleCard(row, headerRow);
             if (parsedCard) {
                 this.cards.push(parsedCard);
             } else {
@@ -350,25 +265,25 @@ export class CsvProcessor {
             if (value === '') {
                 return;
             }
-            if (value.match(this.appConfig.dateAcqRegex)) {
-                this.headers.acquire_date = index;
-            } else if (value.match(this.appConfig.priceAcqRegex)) {
-                this.headers.acquire_price = index;
-            } else if (value.match(this.appConfig.foilRegex)) {
-                this.headers.foil = index;
-            } else if (this.appConfig.validConditions.includes(value)) {
-                this.headers.condition = index;
-            } else if (this.appConfig.setCodes.includes(value)) {
-                this.headers.set_code = index;
-            } else if (this.appConfig.supportedLanguages.includes(value)) {
-                this.headers.language = index;
+            if (value.match(this.cardParser.appConfig.dateAcqRegex)) {
+                this.cardParser.headers.acquire_date = index;
+            } else if (value.match(this.cardParser.appConfig.priceAcqRegex)) {
+                this.cardParser.headers.acquire_price = index;
+            } else if (value.match(this.cardParser.appConfig.foilRegex)) {
+                this.cardParser.headers.foil = index;
+            } else if (this.cardParser.appConfig.validConditions.includes(value)) {
+                this.cardParser.headers.condition = index;
+            } else if (this.cardParser.appConfig.setCodes.includes(value)) {
+                this.cardParser.headers.set_code = index;
+            } else if (this.cardParser.appConfig.supportedLanguages.includes(value)) {
+                this.cardParser.headers.language = index;
             } else {
-                if (this.appConfig.setNames.includes(value)) {
-                    this.headers.expansion = index;
+                if (this.cardParser.appConfig.setNames.includes(value)) {
+                    this.cardParser.headers.expansion = index;
                 } else {
                     // We only want to detect card name once because it is the map of last resort
-                    if (this.headers.name === undefined) {
-                        this.headers.name = index;
+                    if (this.cardParser.headers.name === undefined) {
+                        this.cardParser.headers.name = index;
                     }
                 }
             }
