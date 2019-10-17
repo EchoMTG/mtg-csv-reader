@@ -6,14 +6,16 @@ export type EchoResponse = {
     status: string,
     message: string
     card: ParsedCard
-    match?: {
-        [index: string]: string
-    },
+    match?: EchoResponseMatch,
     all_matches?: [
         {
             [index: string]: string | null
         }
     ]
+}
+
+export type EchoResponseMatch = {
+    [index: string]: string
 }
 
 export class EchoClient {

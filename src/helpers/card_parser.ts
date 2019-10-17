@@ -1,5 +1,6 @@
 import {AppConfig} from "../util/definitions";
 import {snake} from "change-case";
+import {EchoResponse, EchoResponseMatch} from "./echo_client";
 
 export interface ParsedCard {
     name: string,
@@ -10,6 +11,7 @@ export interface ParsedCard {
     condition: string,
     language: string,
     foil: boolean,
+    errors?: string[],
     extra_details: {
         [index: string]: string
     }
@@ -59,9 +61,29 @@ export class CardParser {
             extra_details: {}
         };
 
+
+        //TODO - Add some functions to include extra passed in columns
+        if (this.appConfig.includeUnknownFields && other_headers) {
+
+            const columnsAlreadySet = Object.values(this.headers);
+            other_headers.forEach((header: string, index: number) => {
+                if (columnsAlreadySet.indexOf(index) === -1) {
+                    parsedCard.extra_details[other_headers[index]] = details[index];
+                }
+            });
+        }
+
         // Require AT LEAST Name AND ( Set | set_code )
         if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
-            return undefined
+            parsedCard.errors = [];
+            if ( this.headers.name == undefined ) {
+                parsedCard.errors.push('card_name:');
+            } else {
+                parsedCard.name = details[this.headers.name];
+            }
+            if ( this.headers.expansion == undefined) { parsedCard.errors.push('expansion') }
+            if ( this.headers.set_code == undefined ) { parsedCard.errors.push('set_code') }
+            return parsedCard;
         } else {
             // Set the card name
             parsedCard['name'] = details[this.headers.name];
@@ -87,21 +109,39 @@ export class CardParser {
         }
 
         parsedCard['foil'] = (!!this.headers.foil);
-        parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
-        parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
-        parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
-        parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
+        parsedCard['condition'] =       this.determineFieldValue(this.headers.condition, details, '');
+        // parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
+        parsedCard['language'] =        this.determineFieldValue(this.headers.language, details, '');
+        //parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
+        parsedCard['acquire_date'] =    this.determineFieldValue(this.headers.acquire_date, details, '');
+        // parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
+        parsedCard['acquire_price'] =   this.determineFieldValue(this.headers.acquire_price, details, '');
+        //parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
 
-        //TODO - Add some functions to include extra passed in columns
-        if (this.appConfig.includeUnknownFields && other_headers) {
-
-            const columnsAlreadySet = Object.values(this.headers);
-            other_headers.forEach((header: string, index: number) => {
-                if (columnsAlreadySet.indexOf(index) === -1) {
-                    parsedCard.extra_details[other_headers[index]] = details[index];
-                }
-            });
-        }
         return parsedCard;
+    }
+
+    /**
+     * This method is used to check for the presence of a defined header column and set the value using that index, else return a default value
+     * @param test
+     * @param values
+     * @param defaultValue
+     */
+    determineFieldValue(test: number|undefined, values: string[], defaultValue: string): string {
+        if ( test ) {
+            return values[test];
+        } else {
+            return defaultValue;
+        }
+    }
+
+    updateCardFromEchoResults(card: ParsedCard, newDetails: EchoResponseMatch): void {
+        if ( card.errors ) {
+            card.errors.forEach((error_field: string) => {
+               // @ts-ignore
+                card[error_field] = newDetails[error_field];
+            });
+            delete card.errors;
+        }
     }
 }

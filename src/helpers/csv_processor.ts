@@ -6,14 +6,14 @@ import {EchoClient, EchoResponse} from "./echo_client";
 import {CardParser, ParsedCard, parsingStatus} from "./card_parser";
 
 export type CsvProcessorResult = {
-    errors: string[];
+    errors: ParsedCard[];
     cards: ParsedCard[];
     headers: parsingStatus
 }
 
 export class CsvProcessor {
     cards: ParsedCard[] = [];
-    errors: string[] = [];
+    errors: ParsedCard[] = [];
     mappedFields: { [index: string]: string };
     cardParser: CardParser;
     supportedMimeTypes: string[];
@@ -54,9 +54,6 @@ export class CsvProcessor {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = '/tmp/' + tmpfilename;
 
-        console.log(file.tempFilePath);
-        console.log(file.name);
-
         file.mv(tmpfilepath, (err) => {
             if (err) {
                 console.log("Error in move");
@@ -68,25 +65,21 @@ export class CsvProcessor {
 
             const results: string[][] = [];
 
-            console.log(file.data.toString());
-
             fs.createReadStream(tmpfilepath)
                 .pipe(csvParse())
                 .on('error', (innerErr: Error) => {
                     // if teh data is an invalid CSV, this will throw an error here
-                    this.errors.push(innerErr.message);
+                    // this.errors.push(innerErr.message);
                     cb(err, this.generateResults());
                 })
                 .on('data', (data: string[]) => {
-                    //Clean teh data
-                    console.log(data);
                     const cleanData: string[] = data.map((value: string) => {
-                        const clean = value
+                        value = value
                             .replace(/^'/, '')
                             .replace(/'$/, '')
                             .trim();
 
-                        return clean;
+                        return value;
                     });
                     results.push(cleanData);
                 })
@@ -101,7 +94,6 @@ export class CsvProcessor {
                             .then(this.handleEchoResults.bind(this))
                             .catch((rErr: Error ) => {
                                // There was a rejection. Since echo seems to always return 200 assuming its up
-                               console.log(`Error querying Echo: ${rErr.message}`);
                                cb(err, this.generateResults());
                             })
                             .finally(() => cb(undefined, this.generateResults()));
@@ -112,13 +104,32 @@ export class CsvProcessor {
         });
     }
 
+    /**
+     * This method handles the results of all teh echo Queries.
+     * - If the search was a success, set the echo_id on the extra_details of teh card object
+     * - If the search was a success, and something is an error field, try to steal it from echo results
+     * - - This is useful because echo will return a card even if you search only by name. This allows people to add lists taht ignore sets. Good for decks?
+     * - If it was not a success, delete the parsed card, add it to the errors object
+     * @param echoResults
+     */
     handleEchoResults(echoResults: EchoResponse[]): void {
         console.log("All requests returned");
         echoResults.forEach((res: EchoResponse) => {
-            console.log(res);
             if (res.status === "success") {
                 if (res.match) {
+                    // We found a result. Lets see if any updates need to be made to teh card before we finally give up on parsing the card.
+                    if ( res.card.errors ) {
+                        this.cardParser.updateCardFromEchoResults(res.card, res.match);
+                    }
                     res.card.extra_details['echo_id'] = res.match['id'];
+                }
+            }  else {
+                if ( res.card.errors ) {
+                    this.errors.push(res.card);
+                    const index: number = this.cards.indexOf(res.card, 0);
+                    if ( index > -1 ) {
+                        this.cards.splice(index,1);
+                    }
                 }
             }
         });
@@ -134,7 +145,6 @@ export class CsvProcessor {
                 return true
             }
         }
-        console.log('No headers found');
         return false;
     }
 
@@ -233,8 +243,6 @@ export class CsvProcessor {
 
                 if (parsedCard) {
                     this.cards.push(parsedCard);
-                } else {
-                    this.errors.push(`Unable to parse row: ${i}: ${row}`);
                 }
             });
         }
@@ -250,8 +258,6 @@ export class CsvProcessor {
             const parsedCard = this.cardParser.parseSingleCard(row, headerRow);
             if (parsedCard) {
                 this.cards.push(parsedCard);
-            } else {
-                this.errors.push(`Unable to parse row: ${index}: ${row}`)
             }
         });
     }
