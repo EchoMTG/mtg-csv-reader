@@ -8,14 +8,14 @@ export type EchoResponse = {
     card: ParsedCard
     match?: EchoResponseMatch,
     all_matches?: [
-        {
-            [index: string]: string | null
-        }
+        EchoResponseMatch
     ]
 }
 
 export type EchoResponseMatch = {
-    [index: string]: string
+    [index: string]: string,
+    set_code: string,
+    name: string
 }
 
 export class EchoClient {
@@ -47,6 +47,7 @@ export class EchoClient {
     _querySingle(card: ParsedCard): Promise<EchoResponse> {
         const uri: string = `/api/search/individual?name=${card.name}&set=${card.set_code}`;
         const fullUrl: string = `https://${this.host}${uri}`;
+        console.log(fullUrl);
         return new Promise((resolve, reject) => {
             request(fullUrl, (err: Error, res: request.Response, body: any) => {
                 if (err) {

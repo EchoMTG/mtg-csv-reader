@@ -1,4 +1,4 @@
-multiverse_id,mtgo_id,set,collector_number,lang,rarity,name,mana_cost,cmc,type_line,artist,usd_price,usd_foil_price,eur_price,tix_price,image_uri,scryfall_uri
+multiverse_id,mtgo_id,set_code,collector_number,lang,rarity,name,mana_cost,cmc,type_line,artist,usd_price,usd_foil_price,eur_price,tix_price,image_uri,scryfall_uri
 447139,68167,M19,3,en,M,"Ajani, Adversary of Tyrants",{2}{W}{W},4,Legendary Planeswalker — Ajani,Victor Adame Minguez,2.51,15.34,3.24,0.06,https://img.scryfall.com/cards/large/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg?1562302134,https://scryfall.com/card/m19/3/ajani-adversary-of-tyrants
 370680,49245,M14,1,en,M,"Ajani, Caller of the Pride",{1}{W}{W},3,Legendary Planeswalker — Ajani,D. Alexander Gregory,3.71,8.77,4.22,0.06,https://img.scryfall.com/cards/large/front/3/3/33e44e04-8330-49ca-906c-bb9bf0bc84ce.jpg?1562827754,https://scryfall.com/card/m14/1/ajani-caller-of-the-pride
 205957,37138,M11,1,en,M,Ajani Goldmane,{2}{W}{W},4,Legendary Planeswalker — Ajani,Aleksi Briclot,6.28,13.91,3.43,0.04,https://img.scryfall.com/cards/large/front/2/d/2d911053-a026-4b20-ba2d-dbcc367c1413.jpg?1562454645,https://scryfall.com/card/m11/1/ajani-goldmane

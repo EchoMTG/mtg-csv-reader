@@ -47,7 +47,8 @@ export class App {
                     if ( csvProcessor.isSupportedMimeType(file.mimetype) ) {
                         csvProcessor.processCsv(file, (err,data: CsvProcessorResult) => {
                             if (err) {
-                                res.send(data).status(400);
+                                console.log("Sending 400");
+                                res.send(data.parsingErrors).status(400);
                             } else {
                                 res.send(data).status(200);
                             }
@@ -60,7 +61,8 @@ export class App {
                         // Process a single file upload. Do we process async?
                         csvProcessor.processCsv(req.files.csvFile, (err,data: CsvProcessorResult) => {
                             if (err) {
-                                res.send(data).status(400);
+                                console.log("Sending a 400");
+                                res.send(data.parsingErrors).status(400);
                             } else {
                                 res.send(data).status(200);
                             }

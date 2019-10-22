@@ -19,28 +19,25 @@ export interface ParsedCard {
 
 export interface parsingStatus {
     [index: string]: number | undefined;
-    
+
     expansion?: number | undefined;
-    set_code?: number | undefined;
+    set_code: number;
     acquire_date?: number | undefined;
     acquire_price?: number | undefined;
     foil?: number | undefined;
     condition?: number | undefined;
     language?: number | undefined;
-    name?: number | undefined;
+    name: number;
 }
 
 
 export class CardParser {
-    headers: parsingStatus = {name: undefined, expansion: undefined, set_code: undefined};
+    headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
     readonly appConfig: AppConfig;
-    
+
     constructor(appConfig: AppConfig) {
         this.appConfig = appConfig;
-    }
-    
-    isHeader(row: string): boolean {
-        return this.appConfig.headers.includes(snake(row))
+        this.headers = {name: -1,set_code: -1};
     }
 
     /**
@@ -64,7 +61,6 @@ export class CardParser {
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
-
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
@@ -73,49 +69,40 @@ export class CardParser {
             });
         }
 
-        // Require AT LEAST Name AND ( Set | set_code )
-        if ((this.headers.name === undefined) || (this.headers.expansion === undefined && this.headers.set_code === undefined)) {
-            parsedCard.errors = [];
-            if ( this.headers.name == undefined ) {
-                parsedCard.errors.push('card_name:');
+
+        // Set the requried fields
+        parsedCard['name'] = details[this.headers.name];
+        parsedCard['set_code'] = details[this.headers.set_code];
+
+        if (this.headers.expansion) {
+            // We may need move the expansion value to set_code
+            if (this.appConfig.setCodes.includes(details[this.headers.expansion])) {
+                console.log('Coercing EXPANSION to SET_CODE');
+                parsedCard['set_code'] = details[this.headers.expansion];
+                parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
             } else {
-                parsedCard.name = details[this.headers.name];
-            }
-            if ( this.headers.expansion == undefined) { parsedCard.errors.push('expansion') }
-            if ( this.headers.set_code == undefined ) { parsedCard.errors.push('set_code') }
-            return parsedCard;
-        } else {
-            // Set the card name
-            parsedCard['name'] = details[this.headers.name];
-            if (this.headers.expansion) {
-                // We may need move the expansion value to set_code
-                if (this.appConfig.setCodes.includes(details[this.headers.expansion])) {
-                    console.log('Coercing EXPANSION to SET_CODE');
-                    parsedCard['set_code'] = details[this.headers.expansion];
-                    parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
-                } else {
-                    parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
-                    parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
-                }
-            }
-
-            if ( parsedCard['set_code'] && parsedCard['expansion'] ) {
-                parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']);
-            }
-
-            if (parsedCard['expansion'] && !parsedCard['set_code']) {
-                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
+                parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
+                parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
             }
         }
 
+        if (parsedCard['set_code'] && !parsedCard['expansion']) {
+            parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']);
+        }
+
+        if (parsedCard['expansion'] && !parsedCard['set_code']) {
+            parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
+        }
+
+
         parsedCard['foil'] = (!!this.headers.foil);
-        parsedCard['condition'] =       this.determineFieldValue(this.headers.condition, details, '');
+        parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         // parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
-        parsedCard['language'] =        this.determineFieldValue(this.headers.language, details, '');
+        parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
         //parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
-        parsedCard['acquire_date'] =    this.determineFieldValue(this.headers.acquire_date, details, '');
+        parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
         // parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
-        parsedCard['acquire_price'] =   this.determineFieldValue(this.headers.acquire_price, details, '');
+        parsedCard['acquire_price'] = this.determineFieldValue(this.headers.acquire_price, details, '');
         //parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
 
         return parsedCard;
@@ -127,8 +114,8 @@ export class CardParser {
      * @param values
      * @param defaultValue
      */
-    determineFieldValue(test: number|undefined, values: string[], defaultValue: string): string {
-        if ( test ) {
+    determineFieldValue(test: number | undefined, values: string[], defaultValue: string): string {
+        if (test) {
             return values[test];
         } else {
             return defaultValue;
@@ -136,9 +123,9 @@ export class CardParser {
     }
 
     updateCardFromEchoResults(card: ParsedCard, newDetails: EchoResponseMatch): void {
-        if ( card.errors ) {
+        if (card.errors) {
             card.errors.forEach((error_field: string) => {
-               // @ts-ignore
+                // @ts-ignore
                 card[error_field] = newDetails[error_field];
             });
             delete card.errors;
