@@ -1,6 +1,6 @@
 ## Project Goal
 
-Be able to read CSV or XLS files of magic the gathering cards which can contain these columns
+Be able to read CSV or XLS files of magic the gathering cards which must contain at least this columns:
 
 * card name (string)
 * card expansion (string)
@@ -14,8 +14,7 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
 ## Current Concepts
 
 1. Be able to read both formats and convert it into a javascrip object that can be iterated over
-2. detact fields by sample a few items of each column to make a best guess on what the column is
-3. Return the data in a uniform JSON object like
+2. Return the data in a uniform JSON object like
 
 ```{
     "name" : "Snapcaster Mage",
@@ -31,20 +30,8 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
 
 ## Supported Formats
 
-You can upload a CSV with our without headers. 
+You can upload a CSV using the exact headers above
 
-## Supported Headers
-
-Header names will be converted to snake case. This means you could use SetCode/setCode/Set Code for set_code
-
-## Best Effort Mappings
-
-* Expansion: This value will be compared against a list of all know magic sets
-* Set Code: This value will be compared against a list of all known magic set codes
-* Foil: True/true/Yes/yes, otherwise false
-* Language: EN,English,GR,German,RU,Russion,SP,Spanish,CS,Chinses Simplified,CT, Chinese Traditional,etc
-* Price Acquired: A number, optionally followed by a decimal and 2 more numbers
-* Date Acquired: Date in format: YYYY/MM/DD OR YYYY/M/D OR MM/DD/YYYY OR M/D/YYYY
 
 ## Running
 
