@@ -9,28 +9,16 @@ export type CsvProcessorResult = {
     errors: {name: string, set_code:string}[] ;
     cards: ParsedCard[];
     headers: parsingStatus
-    parsingErrors?: string[]
+    parsingErrors: string[]
 }
 
 export class CsvProcessor {
-    cards: ParsedCard[] = [];
-    errors: {name: string, set_code:string}[] = [];
-    parsingErrors: string[] = [];
-    mappedFields: { [index: string]: string };
     cardParser: CardParser;
     supportedMimeTypes: string[];
 
     constructor(config: AppConfig) {
         this.cardParser = new CardParser(config);
         this.supportedMimeTypes = config.supportedMimeTypes;
-        this.mappedFields = {
-            supportedNameHeaders: 'name',
-            supportedDateHeaders: 'acquire_date',
-            supportedPriceHeaders: 'acquire_price',
-            supportedConditionHeaders: 'condition',
-            supportedSetHeaders: 'expansion',
-            supportedSetCodeHeaders: 'set_code'
-        };
     }
 
     /**
@@ -39,12 +27,6 @@ export class CsvProcessor {
      */
     isSupportedMimeType(type: string) {
         return this.supportedMimeTypes.includes(type);
-    }
-
-    generateResults(): CsvProcessorResult {
-        return {
-            errors: this.errors, headers: this.cardParser.headers, cards: this.cards, parsingErrors: this.parsingErrors
-        }
     }
 
     /**
@@ -56,13 +38,15 @@ export class CsvProcessor {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = '/tmp/' + tmpfilename;
 
+        let parsingResult: CsvProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
+
         file.mv(tmpfilepath, (err) => {
             if (err) {
                 console.log("Error in move");
                 console.log(err);
                 // There is a good chance this is a server rror
-                this.errors.push(err);
-                cb(err, this.generateResults());
+                parsingResult.parsingErrors.push(err);
+                cb(err, parsingResult);
             }
 
             const results: string[][] = [];
@@ -73,7 +57,8 @@ export class CsvProcessor {
                     // if teh data is an invalid CSV, this will throw an error here
                     // this.errors.push(innerErr.message);
                     console.log("Error loading file");
-                    cb(innerErr, this.generateResults());
+                    parsingResult.parsingErrors.push(innerErr.message);
+                    cb(err, parsingResult);
                 })
                 .on('data', (data: string[]) => {
                     const cleanData: string[] = data.map((value: string) => {
@@ -88,32 +73,17 @@ export class CsvProcessor {
                 })
                 .on('end', () => {
                     if (results.length > 0) {
-                        // Parse the results
-                        this.parseRawRows(results);
-
-                        // Query the EchoApi to check for its existance
-                        const echo: EchoClient = new EchoClient(1, 1);
+                        // Parse the results into MTG Card Objects
+                        this.cardParser.parseRawRows(results);
 
                         if (process.env.SKIP_ECHO) {
-                            return cb(undefined, this.generateResults());
+                            return cb(undefined, parsingResult);
                         }
 
-                        echo.queryBatch(this.generateResults().cards)
-                            .then(this.handleEchoResults.bind(this))
-                            .catch((rErr: Error) => {
-                                this.parsingErrors.push(rErr.message);
-                                // There was a rejection. Since echo seems to always return 200 assuming its up
-                                cb(err, this.generateResults());
-                            })
-                            .finally(() => {
-                                if (this.parsingErrors.length > 0) {
-                                    cb(new Error, this.generateResults());
-                                } else {
-                                    cb(undefined, this.generateResults())
-                                }
-                            });
+                        //Validate those objects against the ECHO API
+                        this.cardParser.parseCards(parsingResult, cb);
                     } else {
-                        cb(undefined, this.generateResults());
+                        cb(undefined, parsingResult);
                     }
                 });
         });
@@ -127,225 +97,41 @@ export class CsvProcessor {
      * - If it was not a success, delete the parsed card, add it to the errors object
      * @param echoResults
      */
-    handleEchoResults(echoResults: EchoResponse[]): void {
-        console.log("All requests returned");
-        echoResults.forEach((res: EchoResponse) => {
-            if (res.status === "success") {
-                if (res.match) {
-                    // We found a result. Lets see if any updates need to be made to teh card before we finally give up on parsing the card.
-                    // if (res.card.errors) {
-                    //     this.cardParser.updateCardFromEchoResults(res.card, res.match);
-                    // }
-                    if (res.match['set_code'] != res.card.set_code && res.all_matches) {
-                        this.doubleCheck(res.card, res.all_matches);
-                    } else {
-                        res.card.extra_details['echo_id'] = res.match['id'];
-                    }
-
-                }
-            } else {
-                this.deleteCard(res.card);
-            }
-        });
-    }
-
-    doubleCheck(card: ParsedCard, allMatches: EchoResponseMatch[]) {
-        for( let i = 0; i++; i < allMatches.length ) {
-            let match = allMatches[i];
-            if ( card.set_code == match.set_code ) {
-                console.log()
-                card.extra_details['echo_id'] = match.id;
-                break;
-            }
-        }
-        this.deleteCard(card);
-    }
-
-    deleteCard(card: ParsedCard) {
-        this.errors.push({name: card.name, set_code: card.set_code});
-
-        const index: number = this.cards.indexOf(card, 0);
-        if (index > -1) {
-            this.cards.splice(index, 1);
-        }
-    }
-
-    /**
-     * Loop through the given list of strings to see if ANY of them exist in the list of Supported Headers
-     * @param inputData: string[]
-     * TODO - Reimplement feature: Headerless Parsing
-     */
-    // detectHeaderRow(inputData: string[]) {
-    //     for (const row of inputData) {
-    //         if (this.cardParser.isHeader(row)) {
-    //             return true
-    //         }
-    //     }
-    //     return false;
-    // }
-
-    /**
-     * Sets the best header to use for a given provided header
-     * @param header: string
-     * @param index: number
-     * TODO - Reimplement Feature: Parsing Dyanmic HEader Fields
-     */
-    // coerceHeaders(header: string, index: number): void {
-    //     const bestHeader: string | undefined = this.findBestHeader(header);
-    //     if (bestHeader) {
-    //         this.cardParser.headers[bestHeader] = index;
-    //     }
-    // }
-
-    /**
-     * Try to find the best header for a provided header.
-     * @param providedHeader: string - User provided header
-     * @return bestHEader: string - The best header we could determine for the provided header
-     * TODO - Reimplement Feature: Parsing Dyanmic HEader Fields
-     */
-    // findBestHeader(providedHeader: string): string | undefined {
-    //     let bestHeader: string | undefined = undefined;
-    //     Object.getOwnPropertyNames(this.cardParser.appConfig).forEach((config: string) => {
-    //         if (config.startsWith('supported')) {
-    //             if (Array.isArray(this.cardParser.appConfig[config])) {
-    //                 const values = this.cardParser.appConfig[config] as string[];
-    //                 if (values.includes(providedHeader.toUpperCase())) {
-    //                     console.log(`Coerced Header: FROM ${providedHeader} TO ${this.mappedFields[config]}`);
-    //                     bestHeader = this.mappedFields[config];
+    // handleEchoResults(echoResults: EchoResponse[]): void {
+    //     console.log("All requests returned");
+    //     echoResults.forEach((res: EchoResponse) => {
+    //         if (res.status === "success") {
+    //             if (res.match) {
+    //                 // We found a result. Lets see if any updates need to be made to teh card before we finally give up on parsing the card.
+    //                 // if (res.card.errors) {
+    //                 //     this.cardParser.updateCardFromEchoResults(res.card, res.match);
+    //                 // }
+    //                 if (res.match['set_code'] != res.card.set_code && res.all_matches) {
+    //                     this.doubleCheck(res.card, res.all_matches);
+    //                 } else {
+    //                     res.card.extra_details['echo_id'] = res.match['id'];
     //                 }
+    //
     //             }
-    //         }
-    //     });
-    //     return bestHeader;
-    // }
-
-    /**
-     * Deterimine best method to use to parse results into cards
-     * @param inputRows
-     */
-    parseRawRows(inputRows: string[][]): void {
-        if (inputRows.length) {
-            const headerRow: string[] | undefined = inputRows.shift();
-            if (Array.isArray(headerRow)) {
-                this.validateHeaders(headerRow);
-                if (this.parsingErrors.length <= 0) {
-                    this.parseRowsWithHeader(headerRow, inputRows);
-                }
-            }
-        }
-    }
-
-    validateHeaders(headers: string[]) {
-        console.log('Validating required headers');
-        ['name', 'set_code'].map((val: string) => {
-            if (headers.indexOf(val) === -1) {
-                this.parsingErrors.push(`Missing Required Header: ${val}`);
-            }
-        })
-    }
-
-    /**
-     * This method allows us to support parsing a CSV that doesn't have headers ( even though thats not a CSV )
-     *  - Step 1: Try to glean what the headers are from the first row
-     *  - Step 1a. For each column in the first row, check it against a known set of conditions:
-     *          - set: List of every set. Downloaded from mtgsets.json
-     *          - set_code: List of every set code. Downloaded from mtgsets.json
-     *          - condition: List of supported conditions hardcoded in src/util/definitions
-     *          - language: List of supported languages OTHERWISE 'EN'
-     *          - foil: ENUM['True','true','Yes','yes'] OTHERWISE false
-     *          - acquire_date: Regex defined in src/util/definitions
-     *          - acquire_price: Regex defined in src/util/definitions
-     *          - name: Anything else *This is the fallback
-     * @param inputRows
-     * TODO - Reimplement Feature
-     */
-    // parseRowsWithoutHeader(inputRows: string[][]): void {
-    //     // We were unable to detect a standard header row.
-    //     // Lets try best effort data mapping
-    //     // TODO - Should we throw away the first row because its probably headers we missed
-    //     // Without headers, were only going to require name/set
-    //     const sampleData: string[] | undefined = inputRows[0];
-    //     if (sampleData) {
-    //         // We have values we can check.
-    //         // This could use some cleaning, but it works
-    //         /**
-    //          * Take the first row of data and try to glean headers from that row.
-    //          * I need to be able to guess the Card Name and the Set/Code for it to be valuable
-    //          */
-    //         this.bestEffortDataMap(sampleData);
-    //
-    //         inputRows.forEach((row: string[], i: number) => {
-    //
-    //             const blankValueCount: number = row.map((v: string) => {
-    //                 return v === ''
-    //             }).length;
-    //             if (blankValueCount) {
-    //                 this.bestEffortDataMap(row);
-    //             }
-    //
-    //             const parsedCard = this.cardParser.parseSingleCard(row);
-    //
-    //
-    //             if (parsedCard) {
-    //                 this.cards.push(parsedCard);
-    //             }
-    //         });
-    //     }
-    // }
-
-    /**
-     * This is our bread and butter parsing method. It will parse rows based on predefined headers
-     * @param headerRow: string[] - A list of column names
-     * @param data: string[][] - A list of lists each of whom contain the values for each column representing a single card
-     */
-    parseRowsWithHeader(headerRow: string[], data: string[][]): void {
-        headerRow.forEach((header: string, index: number) => {
-            if (this.cardParser.appConfig.headers.indexOf(header) != -1) {
-                this.cardParser.headers[header] = index;
-            }
-        });
-
-        data.forEach((row: string[], index: number) => {
-            const parsedCard = this.cardParser.parseSingleCard(row, headerRow);
-            if (parsedCard) {
-                this.cards.push(parsedCard);
-            }
-        });
-    }
-
-    /**
-     * This function is used to try and build an object that will map a FieldName to a ColumnNumber
-     * @param data
-     */
-    // bestEffortDataMap(data: string[]): void {
-    //     data.forEach((value: string, index: number) => {
-    //         if (value === '') {
-    //             return;
-    //         }
-    //         if (value.match(this.cardParser.appConfig.dateAcqRegex)) {
-    //             this.cardParser.headers.acquire_date = index;
-    //         } else if (value.match(this.cardParser.appConfig.priceAcqRegex)) {
-    //             this.cardParser.headers.acquire_price = index;
-    //         } else if (value.match(this.cardParser.appConfig.foilRegex)) {
-    //             this.cardParser.headers.foil = index;
-    //         } else if (this.cardParser.appConfig.validConditions.includes(value)) {
-    //             this.cardParser.headers.condition = index;
-    //         } else if (this.cardParser.appConfig.setCodes.includes(value)) {
-    //             this.cardParser.headers.set_code = index;
-    //         } else if (this.cardParser.appConfig.supportedLanguages.includes(value)) {
-    //             this.cardParser.headers.language = index;
     //         } else {
-    //             if (this.cardParser.appConfig.setNames.includes(value)) {
-    //                 this.cardParser.headers.expansion = index;
-    //             } else {
-    //                 // We only want to detect card name once because it is the map of last resort
-    //                 if (this.cardParser.headers.name === undefined) {
-    //                     this.cardParser.headers.name = index;
-    //                 }
-    //             }
+    //             this.deleteCard(res.card);
     //         }
     //     });
     // }
+
+    // doubleCheck(card: ParsedCard, allMatches: EchoResponseMatch[]) {
+    //     for( let i = 0; i++; i < allMatches.length ) {
+    //         let match = allMatches[i];
+    //         if ( card.set_code == match.set_code ) {
+    //             console.log()
+    //             card.extra_details['echo_id'] = match.id;
+    //             break;
+    //         }
+    //     }
+    //     this.deleteCard(card);
+    // }
+    //
+
 }
 
 

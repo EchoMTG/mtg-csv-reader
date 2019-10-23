@@ -1,6 +1,5 @@
 import {AppConfig} from "../util/definitions";
-import {snake} from "change-case";
-import {EchoResponse, EchoResponseMatch} from "./echo_client";
+import {CsvProcessorResult} from "./csv_processor";
 
 export interface ParsedCard {
     name: string,
@@ -33,6 +32,9 @@ export interface parsingStatus {
 
 export class CardParser {
     headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
+    cards: ParsedCard[] = [];
+    parsingErrors: string[] = [];
+    errors: {name:string, set_code:string}[] = [];
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
@@ -45,7 +47,7 @@ export class CardParser {
      * @param details: string[]
      * @param other_headers: string[] other details we can provide to a card
      */
-    parseSingleCard(details: string[], other_headers?: string[]): ParsedCard | undefined {
+    parseSingleCard(details: string[], other_headers?: string[]): void{
         const parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
@@ -97,15 +99,11 @@ export class CardParser {
 
         parsedCard['foil'] = (!!this.headers.foil);
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
-        // parsedCard['condition'] = (this.headers.condition ? details[this.headers.condition] : '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
-        //parsedCard['language'] = (this.headers.language ? details[this.headers.language] : 'EN');
         parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
-        // parsedCard['acquire_date'] = (this.headers.acquire_date ? details[this.headers.acquire_date] : '');
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.acquire_price, details, '');
-        //parsedCard['acquire_price'] = (this.headers.acquire_price ? details[this.headers.acquire_price] : '');
 
-        return parsedCard;
+        this.cards.push(parsedCard);
     }
 
     /**
@@ -122,13 +120,100 @@ export class CardParser {
         }
     }
 
-    updateCardFromEchoResults(card: ParsedCard, newDetails: EchoResponseMatch): void {
-        if (card.errors) {
-            card.errors.forEach((error_field: string) => {
-                // @ts-ignore
-                card[error_field] = newDetails[error_field];
-            });
-            delete card.errors;
+
+    /**
+     * Deterimine best method to use to parse results into cards
+     * @param inputRows
+     */
+    parseRawRows(inputRows: string[][]): void {
+        if (inputRows.length) {
+            const headerRow: string[] | undefined = inputRows.shift();
+            if (Array.isArray(headerRow)) {
+                this.validateHeaders(headerRow);
+                if (this.parsingErrors.length <= 0) {
+                    this.parseRowsWithHeader(headerRow, inputRows);
+                }
+            }
         }
     }
+
+    /**
+     * Determine if required headers were passed
+     * @param headers
+     */
+    validateHeaders(headers: string[]) {
+        console.log('Validating required headers');
+        ['name', 'set_code'].map((val: string) => {
+            if (headers.indexOf(val) === -1) {
+                this.parsingErrors.push(`Missing Required Header: ${val}`);
+            }
+        })
+    }
+
+
+    /**
+     * This is our bread and butter parsing method. It will parse rows based on predefined headers
+     * @param headerRow: string[] - A list of column names
+     * @param data: string[][] - A list of lists each of whom contain the values for each column representing a single card
+     */
+    parseRowsWithHeader(headerRow: string[], data: string[][]): void {
+        headerRow.forEach((header: string, index: number) => {
+            if (this.appConfig.headers.indexOf(header) != -1) {
+                this.headers[header] = index;
+            }
+        });
+
+        data.forEach((row: string[], index: number) => {
+            this.parseSingleCard(row, headerRow);
+        });
+    }
+
+    /**
+     * Clean up error cards
+     * @param card
+     */
+    deleteCard(card: ParsedCard) {
+        this.errors.push({name: card.name, set_code: card.set_code});
+
+        const index: number = this.cards.indexOf(card, 0);
+        if (index > -1) {
+            this.cards.splice(index, 1);
+        }
+    }
+
+    /**
+     * Return the real objec
+     */
+    parseResults(): CsvProcessorResult {
+        return {
+            errors: this.errors, parsingErrors: this.parsingErrors, headers: this.headers, cards:this.cards
+        }
+    }
+
+    /**
+     * Validate echo API dataset
+     * @param previousResults
+     * @param cb
+     */
+    parseCards(previousResults: CsvProcessorResult, cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
+        if ( previousResults.parsingErrors.length > 0 ) {
+            return cb(new Error(""), previousResults);
+        }
+
+        let cardsToDelete: ParsedCard[] = [];
+        this.cards.forEach((card: ParsedCard) => {
+           // Check if the card name and set exist in the cached data
+           if ( this.appConfig.cardCache[card.set_code.toLowerCase()] ) {
+               if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
+                   card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                   return;
+               }
+           }
+           cardsToDelete.push(card);
+        });
+        cardsToDelete.map(this.deleteCard.bind(this));
+
+        cb(undefined, this.parseResults());
+    }
+
 }

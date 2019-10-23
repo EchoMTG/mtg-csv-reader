@@ -16,27 +16,24 @@ class ConfigFile {
     [index: string]: string[]| RegExp;
 }
 
-class ParsedSets {
-    [index: string]: { name: string, code?: string}
-}
-
 export class AppConfig {
     headers: string[];
-    dateAcqRegex: RegExp;
-    priceAcqRegex: RegExp;
-    foilRegex: RegExp;
-    supportedLanguages: string[];
-    validConditions: string[];
+    // dateAcqRegex: RegExp;
+    // priceAcqRegex: RegExp;
+    // foilRegex: RegExp;
+    // supportedLanguages: string[];
+    // validConditions: string[];
     setNames: string[] = [];
     setCodes: string[] = [];
-    supportedMimeTypes: string[];
-    supportedNameHeaders: string[];
-    supportedDateHeaders: string[];
-    supportedPriceHeaders: string[];
-    supportedConditionHeaders: string[];
-    supportedSetHeaders: string[];
-    supportedSetCodeHeaders: string[];
+    // supportedMimeTypes: string[];
+    // supportedNameHeaders: string[];
+    // supportedDateHeaders: string[];
+    // supportedPriceHeaders: string[];
+    // supportedConditionHeaders: string[];
+    // supportedSetHeaders: string[];
+    // supportedSetCodeHeaders: string[];
     includeUnknownFields: boolean;
+    cardCache: {[index:string]:{[index:string]:string}} = {};
     [index: string]: any;
 
      constructor() {
@@ -46,6 +43,7 @@ export class AppConfig {
         //    this.setNames.push(sets[code]['name'])
         // });
         this.getSetDeta();
+        this.getCardCache();
         let configuration: ConfigFile = new ConfigFile();
 
         if ( Object.keys(config).length ) {
@@ -53,18 +51,7 @@ export class AppConfig {
         }
         // This is a bad way to do this. There should be a better way where I can dynamically figure it out
         this.headers = this.getOrDefault(configuration,'headers', DEFAULT_HEADERS);
-        this.dateAcqRegex = this.getOrDefault(configuration,'date_acquired_regex', /^(\d{4}|\d{2})\/(\d{2}|\d)\/(\d|\d{2}|\d{4})$/ );
-        this.priceAcqRegex = this.getOrDefault(configuration,'price_acquired_regex',/^[0-9]+(?:\.[0-9]{2})?$/ );
-        this.foilRegex = this.getOrDefault(configuration,'foil_regex',/^True$|^true$|^Yes$|^yes$/ );
-        this.supportedLanguages = this.getOrDefault(configuration,'supported_languages', DEFAULT_LANGS);
-        this.validConditions = this.getOrDefault(configuration,'conditions', DEFAULT_CONDITIONS);
         this.supportedMimeTypes = ['text/csv'];
-        this.supportedNameHeaders = this.getOrDefault(configuration,'name_headers', DEFAULT_NAME_HEADERS);
-        this.supportedDateHeaders = this.getOrDefault(configuration,'date_acquired_headers', DEFAULT_DATE_HEADERS);
-        this.supportedPriceHeaders = this.getOrDefault(configuration,'price_acquired_headers', DEFAULT_PRICE_HEADERS);
-        this.supportedConditionHeaders = this.getOrDefault(configuration,'condition_headers', DEFAULT_CONDITION_HEADERS);
-        this.supportedSetHeaders = this.getOrDefault(configuration,'expansion_headers', DEFAULT_SET_HEADERS);
-        this.supportedSetCodeHeaders = this.getOrDefault(configuration,'set_code_headers', DEFAULT_SET_CODE_HEADERS);
         this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
     }
 
@@ -91,7 +78,25 @@ export class AppConfig {
                const data: { sets: { [index: string]: string }} = JSON.parse(body);
                this.setCodes = Object.keys(data.sets);
                this.setNames = Object.values(data.sets);
+               console.log('Got set reference...');
            }
+        });
+    }
+
+    /**
+     * Gather the set data from Echo so it doesn't need to be store locally
+     *
+     */
+    private async getCardCache() {
+        await request('https://dev.echomtg.com/api/data/lookup/', (error: any, response: Response, body: any): void => {
+            if ( error ) {
+                console.log("Unable to fetch set data");
+                return;
+            } else {
+                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString().toLowerCase());
+                this.cardCache = data;
+                console.log('Got card cache...');
+            }
         });
     }
 
