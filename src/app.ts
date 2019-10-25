@@ -4,7 +4,6 @@ import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
 import {AppConfig} from "./util/definitions";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
-import * as cors from "cors";
 
 
 export class App {
@@ -26,7 +25,6 @@ export class App {
 
     setTemplateRoutes(): void {
         this._app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            const path = req.baseUrl;
             res.send(`
             <form action="/upload" method="post" enctype="multipart/form-data">
               <input name="csvFile" type="file" />
@@ -58,7 +56,6 @@ export class App {
                     }
                 } else {
                     if ( csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
-                        // Process a single file upload. Do we process async?
                         csvProcessor.processCsv(req.files.csvFile, (err,data: CsvProcessorResult) => {
                             if (err) {
                                 console.log("Sending a 400");

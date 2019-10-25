@@ -80,57 +80,18 @@ export class CsvProcessor {
                             return cb(undefined, parsingResult);
                         }
 
+                        if ( parsingResult.parsingErrors.length > 0 ) {
+                            return cb(new Error(""), parsingResult);
+                        }
+
                         //Validate those objects against the ECHO API
-                        this.cardParser.parseCards(parsingResult, cb);
+                        this.cardParser.parseCards(cb);
                     } else {
                         cb(undefined, parsingResult);
                     }
                 });
         });
     }
-
-    /**
-     * This method handles the results of all teh echo Queries.
-     * - If the search was a success, set the echo_id on the extra_details of teh card object
-     * - If the search was a success, and something is an error field, try to steal it from echo results
-     * - - This is useful because echo will return a card even if you search only by name. This allows people to add lists taht ignore sets. Good for decks?
-     * - If it was not a success, delete the parsed card, add it to the errors object
-     * @param echoResults
-     */
-    // handleEchoResults(echoResults: EchoResponse[]): void {
-    //     console.log("All requests returned");
-    //     echoResults.forEach((res: EchoResponse) => {
-    //         if (res.status === "success") {
-    //             if (res.match) {
-    //                 // We found a result. Lets see if any updates need to be made to teh card before we finally give up on parsing the card.
-    //                 // if (res.card.errors) {
-    //                 //     this.cardParser.updateCardFromEchoResults(res.card, res.match);
-    //                 // }
-    //                 if (res.match['set_code'] != res.card.set_code && res.all_matches) {
-    //                     this.doubleCheck(res.card, res.all_matches);
-    //                 } else {
-    //                     res.card.extra_details['echo_id'] = res.match['id'];
-    //                 }
-    //
-    //             }
-    //         } else {
-    //             this.deleteCard(res.card);
-    //         }
-    //     });
-    // }
-
-    // doubleCheck(card: ParsedCard, allMatches: EchoResponseMatch[]) {
-    //     for( let i = 0; i++; i < allMatches.length ) {
-    //         let match = allMatches[i];
-    //         if ( card.set_code == match.set_code ) {
-    //             console.log()
-    //             card.extra_details['echo_id'] = match.id;
-    //             break;
-    //         }
-    //     }
-    //     this.deleteCard(card);
-    // }
-    //
 
 }
 

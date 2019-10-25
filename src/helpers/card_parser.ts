@@ -192,14 +192,9 @@ export class CardParser {
 
     /**
      * Validate echo API dataset
-     * @param previousResults
      * @param cb
      */
-    parseCards(previousResults: CsvProcessorResult, cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
-        if ( previousResults.parsingErrors.length > 0 ) {
-            return cb(new Error(""), previousResults);
-        }
-
+    parseCards(cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
         let cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
            // Check if the card name and set exist in the cached data
