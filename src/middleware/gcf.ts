@@ -7,12 +7,6 @@ import * as path from "path";
 import * as fs from "fs";
 const fileUpload = require("express-fileupload");
 
-interface RawBodyRequest {
-    rawBody: string;
-}
-
-type rawBodyRequest = Request & RawBodyRequest;
-
 let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
     if(req.rawBody === undefined && req.method === 'POST' && req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')){
         console.log('getting the raw body for some reason');
