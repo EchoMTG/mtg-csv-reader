@@ -1,4 +1,4 @@
-import {AppConfig} from "../util/definitions";
+import {AppConfig, headerHelper} from "../util/definitions";
 import {CsvProcessorResult} from "./csv_processor";
 
 export interface ParsedCard {
@@ -7,6 +7,7 @@ export interface ParsedCard {
     acquire_date: string,
     acquire_price: string,
     set_code: string,
+    set?: string,
     condition: string,
     language: string,
     foil: boolean,
@@ -66,7 +67,13 @@ export class CardParser {
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
-                    parsedCard.extra_details[other_headers[index]] = details[index];
+                    // Check if maybe its a weird spelling of another field
+                    let matchedHeader: string|undefined = headerHelper.isValidHeader(header);
+                    if ( matchedHeader) {
+                        this.headers[matchedHeader] = index;
+                    } else {
+                        parsedCard.extra_details[other_headers[index]] = details[index];
+                    }
                 }
             });
         }
@@ -96,13 +103,18 @@ export class CardParser {
             parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
         }
 
+        // This is a workaround to allow Set to match to expansion
+        if ( this.headers['set'] && this.headers['set_code'] === -1 ) {
+            parsedCard['set_code'] = this.appConfig.getCodeBySet(details[this.headers['set']]);
+            parsedCard['expansion'] = details[this.headers['set']];
+        }
+
 
         parsedCard['foil'] = (!!this.headers.foil);
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
         parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.acquire_price, details, '');
-
         this.cards.push(parsedCard);
     }
 
@@ -129,7 +141,8 @@ export class CardParser {
         if (inputRows.length) {
             const headerRow: string[] | undefined = inputRows.shift();
             if (Array.isArray(headerRow)) {
-                this.validateHeaders(headerRow);
+                const checkRow: string[] = headerRow.map(val => val.toLowerCase());
+                this.validateHeaders(checkRow);
                 if (this.parsingErrors.length <= 0) {
                     this.parseRowsWithHeader(headerRow, inputRows);
                 }
@@ -143,11 +156,15 @@ export class CardParser {
      */
     validateHeaders(headers: string[]) {
         console.log('Validating required headers');
-        ['name', 'set_code'].map((val: string) => {
+        ['name', 'set'].map((val: string) => {
             if (headers.indexOf(val) === -1) {
+                // We need to check for near matches
                 this.parsingErrors.push(`Missing Required Header: ${val}`);
+            } else {
+                this.headers[val] = headers.indexOf(val);
             }
-        })
+        });
+        console.log(`Current parsing errors: ${this.parsingErrors}`);
     }
 
 
@@ -158,8 +175,8 @@ export class CardParser {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         headerRow.forEach((header: string, index: number) => {
-            if (this.appConfig.headers.indexOf(header) != -1) {
-                this.headers[header] = index;
+            if (this.appConfig.headers.indexOf(header.toLowerCase()) != -1) {
+                this.headers[header.toLowerCase()] = index;
             }
         });
 
@@ -173,7 +190,7 @@ export class CardParser {
      * @param card
      */
     deleteCard(card: ParsedCard) {
-        this.errors.push({name: card.name, set_code: card.set_code});
+        this.errors.push(card);
 
         const index: number = this.cards.indexOf(card, 0);
         if (index > -1) {
@@ -197,6 +214,11 @@ export class CardParser {
     parseCards(cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
         let cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
+            if ( !card.set_code) {
+                // This failed to parse. Ddelete it and return it as an error
+                cardsToDelete.push(card);
+                return;
+            }
            // Check if the card name and set exist in the cached data
            if ( this.appConfig.cardCache[card.set_code.toLowerCase()] ) {
                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {

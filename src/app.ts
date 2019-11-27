@@ -61,6 +61,7 @@ export class App {
                                 console.log("Sending a 400");
                                 res.send(data.parsingErrors).status(400);
                             } else {
+                                console.log(data);
                                 res.send(data).status(200);
                             }
                         });
