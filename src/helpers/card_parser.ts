@@ -104,9 +104,17 @@ export class CardParser {
         }
 
         // This is a workaround to allow Set to match to expansion
-        if ( this.headers['set'] && this.headers['set_code'] === -1 ) {
-            parsedCard['set_code'] = this.appConfig.getCodeBySet(details[this.headers['set']]);
-            parsedCard['expansion'] = details[this.headers['set']];
+        if ( this.headers['set'] && ( this.headers['set_code'] === -1 || this.headers['expansion'] === -1 ) ) {
+            let unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
+            if ( unknownValue ) {
+                // They passed a full expac name
+                parsedCard['set_code'] = unknownValue;
+                parsedCard['expansion'] = details[this.headers['set']];
+            } else {
+                // They passed a set code as Set
+                parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
+                parsedCard['set_code'] = details[this.headers['set']];
+            }
         }
 
 
@@ -213,6 +221,7 @@ export class CardParser {
      */
     parseCards(cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
         let cardsToDelete: ParsedCard[] = [];
+
         this.cards.forEach((card: ParsedCard) => {
             if ( !card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error

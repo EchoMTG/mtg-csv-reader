@@ -120,14 +120,16 @@ export class AppConfig {
      *
      */
     private async getCardCache() {
-        await request('https://dev.echomtg.com/api/data/lookup/', (error: any, response: Response, body: any): void => {
+         request('https://dev.echomtg.com/api/data/lookup/', (error: any, response: Response, body: any): void => {
             if ( error ) {
                 console.log("Unable to fetch set data");
                 return;
             } else {
-                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString().toLowerCase());
+                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString());
+                console.log(Object.keys(data['war']).length);
                 this.cardCache = data;
                 console.log('Got card cache...');
+                console.log(Object.keys(this.cardCache['war']).length);
             }
         });
     }
