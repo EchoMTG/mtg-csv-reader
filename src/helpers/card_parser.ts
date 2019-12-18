@@ -106,6 +106,7 @@ export class CardParser {
         // This is a workaround to allow Set to match to expansion
         if ( this.headers['set'] && ( this.headers['set_code'] === -1 || this.headers['expansion'] === -1 ) ) {
             let unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
+            console.log(`Performing mysterSetWorkaround: ${unknownValue}`);
             if ( unknownValue ) {
                 // They passed a full expac name
                 parsedCard['set_code'] = unknownValue;
@@ -221,21 +222,25 @@ export class CardParser {
      */
     parseCards(cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
         let cardsToDelete: ParsedCard[] = [];
-
+        console.log(this.appConfig.cardCache['war']);
         this.cards.forEach((card: ParsedCard) => {
             if ( !card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
+                console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Missing Set Code`);
                 cardsToDelete.push(card);
                 return;
             }
            // Check if the card name and set exist in the cached data
            if ( this.appConfig.cardCache[card.set_code.toLowerCase()] ) {
+               console.log(`Checking for ${card.set_code.toLowerCase()} and ${card.name.toLowerCase()}`);
                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                    card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
                    return;
+               } else {
+                   console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Card missing from Echo Cache`);
+                   cardsToDelete.push(card);
                }
            }
-           cardsToDelete.push(card);
         });
         cardsToDelete.map(this.deleteCard.bind(this));
 

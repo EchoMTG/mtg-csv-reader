@@ -39,6 +39,9 @@ export class EchoClient {
         return await Promise.all(waitOn);
     }
 
+
+
+
     /**
      * Query a single URI and return a promise of the parsed result
      * @param card
