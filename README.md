@@ -16,7 +16,8 @@ Be able to read CSV or XLS files of magic the gathering cards which must contain
 1. Be able to read both formats and convert it into a javascrip object that can be iterated over
 2. Return the data in a uniform JSON object like
 
-```{
+```
+{
     "name" : "Snapcaster Mage",
     "expansion" : "innistrad",
     "set_code" :"inn",
@@ -27,6 +28,7 @@ Be able to read CSV or XLS files of magic the gathering cards which must contain
     "language" : "EN" // optional defaults to EN
 
 }
+```
 
 ## Supported Formats
 

@@ -9,3 +9,7 @@ node_modulesfunctions/lib
 functions/lib/
 node_modules/
 lib/
+./node_modules
+.env
+./tmp/*
+
