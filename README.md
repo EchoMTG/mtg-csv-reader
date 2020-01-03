@@ -1,6 +1,6 @@
 ## Project Goal
 
-Be able to read CSV or XLS files of magic the gathering cards which can contain these columns
+Be able to read CSV or XLS files of magic the gathering cards which must contain at least this columns:
 
 * card name (string)
 * card expansion (string)
@@ -14,8 +14,7 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
 ## Current Concepts
 
 1. Be able to read both formats and convert it into a javascrip object that can be iterated over
-2. detact fields by sample a few items of each column to make a best guess on what the column is
-3. Return the data in a uniform JSON object like
+2. Return the data in a uniform JSON object like
 
 ```
 {
@@ -26,19 +25,32 @@ Be able to read CSV or XLS files of magic the gathering cards which can contain 
     "price_acquired" : "4.80", // optional    
     "condition" : "nm", // optional
     "foil" : true, // optional defaults to false
-    "lanaguage" : "EN" // optional defaults to EN
+    "language" : "EN" // optional defaults to EN
 
 }
 ```
 
-## Testing 
+## Supported Formats
 
-From root directory in terminal
+You can upload a CSV using the exact headers above
 
-`npm install`
 
-`npm start`
+## Running
 
-open browser to `http://localhost/`
+To install all requied libraries
+
+`npm install --prefix functions`
+
+To run the code in development mode:
+
+`npm run --prefix functions dev`
+
+To build the code:
+
+`npm run --prefix functions build`
+
+To deploy the code to firebase:
+
+`firebase deploy --only functions` 
 
 select CSV to upload, click submit

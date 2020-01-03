@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "outDir": "lib",
+    "lib": ["es2017","dom"],
+    "target": "ES2017",
+    "strict":true,
+    "experimentalDecorators":true,
+    "resolveJsonModule": true,
+    "typeRoots": [ "./type_overrides", "./node_modules/@types"]
+  },
+  "exclude": [
+    "./node_modules",
+    "./type_overrides"
+  ]
+}
