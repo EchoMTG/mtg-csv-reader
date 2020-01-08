@@ -56,7 +56,7 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
                 const file_object = fileUpload.fileFactory({
                     name: filename,
                     encoding: encoding,
-                    mimetype: 'text/csv',
+                    mimetype: mimetype,
                     buffer: Buffer.concat([]),
                     size: fileSize,
                     truncated: false,

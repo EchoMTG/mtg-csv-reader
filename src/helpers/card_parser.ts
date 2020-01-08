@@ -1,5 +1,6 @@
 import {AppConfig, headerHelper} from "../util/definitions";
-import {CsvProcessorResult} from "./csv_processor";
+import {UploadProcessorResult} from "../upload_processors/csv_processor";
+import set = Reflect.set;
 
 export interface ParsedCard {
     name: string,
@@ -35,12 +36,12 @@ export class CardParser {
     headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
     cards: ParsedCard[] = [];
     parsingErrors: string[] = [];
-    errors: {name:string, set_code:string}[] = [];
+    errors: { name: string, set_code: string }[] = [];
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
         this.appConfig = appConfig;
-        this.headers = {name: -1,set_code: -1};
+        this.headers = {name: -1, set_code: -1};
     }
 
     /**
@@ -48,7 +49,7 @@ export class CardParser {
      * @param details: string[]
      * @param other_headers: string[] other details we can provide to a card
      */
-    parseSingleCard(details: string[], other_headers?: string[]): void{
+    parseSingleCard(details: string[], other_headers?: string[]): void {
         const parsedCard: ParsedCard = {
             foil: false,
             language: 'EN',
@@ -68,8 +69,8 @@ export class CardParser {
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
                     // Check if maybe its a weird spelling of another field
-                    let matchedHeader: string|undefined = headerHelper.isValidHeader(header);
-                    if ( matchedHeader) {
+                    let matchedHeader: string | undefined = headerHelper.isValidHeader(header);
+                    if (matchedHeader) {
                         this.headers[matchedHeader] = index;
                     } else {
                         parsedCard.extra_details[other_headers[index]] = details[index];
@@ -100,21 +101,29 @@ export class CardParser {
         }
 
         if (parsedCard['expansion'] && !parsedCard['set_code']) {
-            parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']);
+            let setCode: string|undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
+            if ( setCode ) {
+                parsedCard['set_code'] = setCode;
+            }
         }
 
         // This is a workaround to allow Set to match to expansion
-        if ( this.headers['set'] && ( this.headers['set_code'] === -1 || this.headers['expansion'] === -1 ) ) {
+        if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
             let unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
             console.log(`Performing mysterSetWorkaround: ${unknownValue}`);
-            if ( unknownValue ) {
+            if (unknownValue) {
                 // They passed a full expac name
                 parsedCard['set_code'] = unknownValue;
                 parsedCard['expansion'] = details[this.headers['set']];
             } else {
-                // They passed a set code as Set
-                parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
-                parsedCard['set_code'] = details[this.headers['set']];
+                // They passed a set code as Set OR they passed an unknown set name
+                if ( this.appConfig.setCodes.includes(details[this.headers['set']]) ) {
+                    parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
+                    parsedCard['set_code'] = details[this.headers['set']];
+                } else {
+                    //TODO - Notify somewhere?
+                    console.log(`WARN: Unknown Set passed: ${details[this.headers['set']]}`);
+                }
             }
         }
 
@@ -190,6 +199,7 @@ export class CardParser {
         });
 
         data.forEach((row: string[], index: number) => {
+
             this.parseSingleCard(row, headerRow);
         });
     }
@@ -210,9 +220,9 @@ export class CardParser {
     /**
      * Return the real objec
      */
-    parseResults(): CsvProcessorResult {
+    parseResults(): UploadProcessorResult {
         return {
-            errors: this.errors, parsingErrors: this.parsingErrors, headers: this.headers, cards:this.cards
+            errors: this.errors, parsingErrors: this.parsingErrors, headers: this.headers, cards: this.cards
         }
     }
 
@@ -220,27 +230,26 @@ export class CardParser {
      * Validate echo API dataset
      * @param cb
      */
-    parseCards(cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
+    parseCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         let cardsToDelete: ParsedCard[] = [];
-        console.log(this.appConfig.cardCache['war']);
         this.cards.forEach((card: ParsedCard) => {
-            if ( !card.set_code) {
+            if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
                 console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Missing Set Code`);
                 cardsToDelete.push(card);
                 return;
             }
-           // Check if the card name and set exist in the cached data
-           if ( this.appConfig.cardCache[card.set_code.toLowerCase()] ) {
-               console.log(`Checking for ${card.set_code.toLowerCase()} and ${card.name.toLowerCase()}`);
-               if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
-                   card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
-                   return;
-               } else {
-                   console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Card missing from Echo Cache`);
-                   cardsToDelete.push(card);
-               }
-           }
+            // Check if the card name and set exist in the cached data
+            if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
+                console.log(`Checking for ${card.set_code.toLowerCase()} and ${card.name.toLowerCase()}`);
+                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
+                    card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    return;
+                } else {
+                    console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Card missing from Echo Cache`);
+                    cardsToDelete.push(card);
+                }
+            }
         });
         cardsToDelete.map(this.deleteCard.bind(this));
 

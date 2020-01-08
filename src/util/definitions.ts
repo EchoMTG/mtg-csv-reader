@@ -92,9 +92,11 @@ export class AppConfig {
         return this.setNames[index];
     }
 
-    getCodeBySet(set: string) {
+    getCodeBySet(set: string): string|undefined {
         const index: number = this.setNames.indexOf(set);
-        return this.setCodes[index];
+        if ( index > -1 ) {
+            return this.setCodes[index]
+        }
     }
 
     /**
@@ -125,11 +127,9 @@ export class AppConfig {
                 console.log("Unable to fetch set data");
                 return;
             } else {
-                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString());
-                console.log(Object.keys(data['war']).length);
+                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString().toLowerCase());
                 this.cardCache = data;
                 console.log('Got card cache...');
-                console.log(Object.keys(this.cardCache['war']).length);
             }
         });
     }

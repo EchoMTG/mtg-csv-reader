@@ -1,6 +1,6 @@
 import * as express from "express"
 // import * as fileUpload from "express-fileupload"
-import {CsvProcessor, CsvProcessorResult} from "./helpers/csv_processor";
+import {UploadProcessorResult, UploadProcessor, BasicCsvProcessor} from "./upload_processors/csv_processor";
 import {AppConfig} from "./util/definitions";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
@@ -35,7 +35,7 @@ export class App {
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             res.set('Access-Control-Allow-Origin', '*');
-            const csvProcessor: CsvProcessor = new CsvProcessor(this._config);
+            const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
             if (req.files === undefined ) {
                 res.send('No files were uploaded').status(400);
             } else {
@@ -43,7 +43,7 @@ export class App {
                     // We need to process a multi part upload
                     let file: UploadedFile = req.files.csvFile[0];
                     if ( csvProcessor.isSupportedMimeType(file.mimetype) ) {
-                        csvProcessor.processCsv(file, (err,data: CsvProcessorResult) => {
+                        csvProcessor.processUpload(file, (err,data: UploadProcessorResult) => {
                             if (err) {
                                 console.log("Sending 400");
                                 res.send(data.parsingErrors).status(400);
@@ -56,7 +56,7 @@ export class App {
                     }
                 } else {
                     if ( csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
-                        csvProcessor.processCsv(req.files.csvFile, (err,data: CsvProcessorResult) => {
+                        csvProcessor.processUpload(req.files.csvFile, (err,data: UploadProcessorResult) => {
                             if (err) {
                                 console.log("Sending a 400");
                                 res.send(data.parsingErrors).status(400);

@@ -2,23 +2,27 @@ import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {AppConfig} from "../util/definitions";
-import {EchoClient, EchoResponse, EchoResponseMatch} from "./echo_client";
-import {CardParser, ParsedCard, parsingStatus} from "./card_parser";
+import {CardParser, ParsedCard, parsingStatus} from "../helpers/card_parser";
 
-export type CsvProcessorResult = {
+export type UploadProcessorResult = {
     errors: {name: string, set_code:string}[] ;
     cards: ParsedCard[];
     headers: parsingStatus
     parsingErrors: string[]
 }
 
-export class CsvProcessor {
+export interface UploadProcessor {
+    isSupportedMimeType (type: string): boolean;
+    processUpload(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: UploadProcessorResult) => void): void
+}
+
+export class BasicCsvProcessor implements UploadProcessor {
     cardParser: CardParser;
     supportedMimeTypes: string[];
 
     constructor(config: AppConfig) {
         this.cardParser = new CardParser(config);
-        this.supportedMimeTypes = config.supportedMimeTypes;
+        this.supportedMimeTypes = ['text/csv'];
     }
 
     /**
@@ -34,11 +38,11 @@ export class CsvProcessor {
      * @param file
      * @param cb
      */
-    processCsv(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: CsvProcessorResult) => void): void {
+    processUpload(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = '/tmp/' + tmpfilename;
 
-        let parsingResult: CsvProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
+        let parsingResult: UploadProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
 
         file.mv(tmpfilepath, (err) => {
             if (err) {
@@ -75,10 +79,6 @@ export class CsvProcessor {
                     if (results.length > 0) {
                         // Parse the results into MTG Card Objects
                         this.cardParser.parseRawRows(results);
-
-                        if (process.env.SKIP_ECHO) {
-                            return cb(undefined, parsingResult);
-                        }
 
                         if ( parsingResult.parsingErrors.length > 0 ) {
                             return cb(new Error(""), parsingResult);
