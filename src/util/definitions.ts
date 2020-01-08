@@ -48,14 +48,6 @@ class ConfigFile {
     [index: string]: string[]| RegExp;
 }
 
-class SetLookupData {
-    [index: string]: string
-}
-
-class JsonLookupData {
-    [index: string]: SetLookupData
-}
-
 export class AppConfig {
     headers: string[];
     // dateAcqRegex: RegExp;
@@ -115,7 +107,7 @@ export class AppConfig {
                console.log("Unable to fetch set data");
                return;
            } else {
-               const data: JsonLookupData = JSON.parse(body);
+               const data: { sets: { [index: string]: string }} = JSON.parse(body);
                this.setCodes = Object.keys(data.sets);
                this.setNames = Object.values(data.sets);
                console.log('Got set reference...');
@@ -133,10 +125,11 @@ export class AppConfig {
                 console.log("Unable to fetch set data");
                 return;
             } else {
-                const data: JsonLookupData = JSON.parse(body.toString());
-                data['war'] =  { ...AppConfig.objectToLowerCase(data['WAR']), ...AppConfig.objectToLowerCase(data['war'])};
+                const data: { [index: string]: {[index: string]: string}} = JSON.parse(body.toString());
+                console.log(Object.keys(data['war']).length);
                 this.cardCache = data;
                 console.log('Got card cache...');
+                console.log(Object.keys(this.cardCache['war']).length);
             }
         });
     }
@@ -155,14 +148,8 @@ export class AppConfig {
         }
     }
 
-    static objectToLowerCase(origObject: SetLookupData) {
-        return Object.keys(origObject).reduce(function (newObj: SetLookupData, key) {
-            let val = origObject[key];
-            newObj[key.toLowerCase()] = val;
-            return newObj;
-        }, {});
-    }
-}
 
+
+}
 
 
