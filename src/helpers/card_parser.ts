@@ -13,6 +13,7 @@ export interface ParsedCard {
     language: string,
     foil: boolean,
     errors?: string[],
+    quantity: string,
     extra_details: {
         [index: string]: string
     }
@@ -28,6 +29,7 @@ export interface parsingStatus {
     foil?: number | undefined;
     condition?: number | undefined;
     language?: number | undefined;
+    quantity?: number | undefined;
     name: number;
 }
 
@@ -59,6 +61,7 @@ export class CardParser {
             set_code: '',
             condition: '',
             name: '',
+            quantity: '',
             extra_details: {}
         };
 
@@ -129,6 +132,7 @@ export class CardParser {
 
 
         parsedCard['foil'] = (!!this.headers.foil);
+        parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
         parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
@@ -198,9 +202,31 @@ export class CardParser {
             }
         });
 
-        data.forEach((row: string[], index: number) => {
+        // We set these from derived values so we always have them no matter in the input format
+        let quantityIndexHeader: number = ( typeof(this.headers.quantity) === 'undefined' ? headerRow.length : this.headers.quantity );
+        this.headers.quantity = quantityIndexHeader;
 
-            this.parseSingleCard(row, headerRow);
+        let foilIndexHeader: number = ( typeof(this.headers.foil) === 'undefined' ? headerRow.length : this.headers.foil );
+        this.headers.foil = foilIndexHeader;
+
+        console.log(`The quantity header is ${quantityIndexHeader} and the foil header is ${foilIndexHeader}`);
+        console.log(`${headerRow}`);
+
+        data.forEach((row: string[]) => {
+            console.log(`Card before foil logic: ${row}`);
+            if ( row != [] ) {
+                // Extract this logic back into the delver lens at some point
+                let foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
+                let isFoil: boolean = false;
+                if ( foilQuantity > 0 ) {
+                    isFoil = true;
+                    console.log(`Settign card to foil and setting the quantity to ${foilQuantity.toString()}`);
+                    row[quantityIndexHeader] = foilQuantity.toString();
+                }
+                row.push(String(isFoil));
+
+                this.parseSingleCard(row, headerRow);
+            }
         });
     }
 

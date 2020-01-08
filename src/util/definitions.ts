@@ -10,6 +10,8 @@ const DEFAULT_SET_HEADERS: string[] = ['EXPANSION','SET','PRINTING', 'Set','Expa
 const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE','CODE','Code','Set Code'];
 const DEFAULT_HEADERS: string[] = ['name','expansion','set_code','date_acquired','price_acquired','condition','foil','language'];
 const DEFAULT_LANGS: string[] = ['EN','GR','FR','SP','CS','IT','JP','CT','KR','RU','English','French','Spanish','Chinese - Simplified', 'Italian','Japanese','Chinese - Traditional','Korean','Russian'];
+const DEFAULT_QUANTITY_HEADERS: string[] = ['Reg Qty','quantity','Quantity'];
+const DEFAULT_FOIL_QUANTITY_HEADERS: string[] = ['Foil Qty'];
 const DEFAULT_CONDITIONS: string[] = ['NM','MINT','EX','HP','LP','DMG'];
 
 let myHeaderHelper: {[index: string]: string[]} = {};
@@ -19,6 +21,8 @@ myHeaderHelper['expansion'] = DEFAULT_SET_HEADERS;
 myHeaderHelper['date_acquired'] = DEFAULT_DATE_HEADERS;
 myHeaderHelper['price_acquired'] = DEFAULT_PRICE_HEADERS;
 myHeaderHelper['condition'] = DEFAULT_CONDITION_HEADERS;
+myHeaderHelper['quantity'] = DEFAULT_QUANTITY_HEADERS;
+myHeaderHelper['foil_quantity'] = DEFAULT_FOIL_QUANTITY_HEADERS;
 myHeaderHelper['language'] = DEFAULT_LANGS;
 
 class HeaderHelper {
