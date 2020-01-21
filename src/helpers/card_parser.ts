@@ -1,4 +1,4 @@
-import {AppConfig, headerHelper} from "../util/definitions";
+import {AppConfig, HeaderHelper, headerHelper} from "../util/definitions";
 import {UploadProcessorResult} from "../upload_processors/csv_processor";
 import set = Reflect.set;
 
@@ -25,7 +25,7 @@ export interface parsingStatus {
     expansion?: number | undefined;
     set_code: number;
     acquire_date?: number | undefined;
-    acquire_price?: number | undefined;
+    price_acquired?: number | undefined;
     foil?: number | undefined;
     condition?: number | undefined;
     language?: number | undefined;
@@ -39,11 +39,13 @@ export class CardParser {
     cards: ParsedCard[] = [];
     parsingErrors: string[] = [];
     errors: { name: string, set_code: string }[] = [];
+    headerHelper: HeaderHelper;
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
+        this.headerHelper = headerHelper;
     }
 
     /**
@@ -65,6 +67,7 @@ export class CardParser {
             extra_details: {}
         };
 
+        console.log(`Parsing card: ${details}`);
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
@@ -72,7 +75,7 @@ export class CardParser {
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
                     // Check if maybe its a weird spelling of another field
-                    let matchedHeader: string | undefined = headerHelper.isValidHeader(header);
+                    let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
                         this.headers[matchedHeader] = index;
                     } else {
@@ -81,6 +84,8 @@ export class CardParser {
                 }
             });
         }
+
+
 
 
         // Set the requried fields
@@ -129,15 +134,21 @@ export class CardParser {
                 }
             }
         }
+        console.log(`Derived quantity value: ${this.determineFieldValue(this.headers.quantity, details, '1') }`);
 
-
-        parsedCard['foil'] = (!!this.headers.foil);
+        parsedCard['foil'] = this.booleanCheck( this.determineFieldValue(this.headers.foil, details, 'false') );
         parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
         parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
-        parsedCard['acquire_price'] = this.determineFieldValue(this.headers.acquire_price, details, '');
+        parsedCard['acquire_price'] = this.determineFieldValue(this.headers.price_acquired, details, '');
+
+        console.log(`Parsed Card: ${JSON.stringify(parsedCard)}`);
         this.cards.push(parsedCard);
+    }
+
+    booleanCheck(value: string): boolean {
+        return ['true', 'True', 'yes', 'Yes', 'Y', 'y'].indexOf(value) > -1;
     }
 
     /**
@@ -147,10 +158,10 @@ export class CardParser {
      * @param defaultValue
      */
     determineFieldValue(test: number | undefined, values: string[], defaultValue: string): string {
-        if (test) {
-            return values[test];
-        } else {
+        if ( typeof(test) === 'undefined' ) {
             return defaultValue;
+        } else {
+            return values[test];
         }
     }
 
@@ -164,9 +175,11 @@ export class CardParser {
             const headerRow: string[] | undefined = inputRows.shift();
             if (Array.isArray(headerRow)) {
                 const checkRow: string[] = headerRow.map(val => val.toLowerCase());
-                this.validateHeaders(checkRow);
+                let fixedHeader: string[] = this.coerceHeaders(checkRow.join(','));
+                console.log(`Final Coerced HEaders: ${fixedHeader}`);
+                this.validateHeaders(fixedHeader);
                 if (this.parsingErrors.length <= 0) {
-                    this.parseRowsWithHeader(headerRow, inputRows);
+                    this.parseRowsWithHeader(fixedHeader, inputRows);
                 }
             }
         }
@@ -177,7 +190,6 @@ export class CardParser {
      * @param headers
      */
     validateHeaders(headers: string[]) {
-        console.log('Validating required headers');
         ['name', 'set'].map((val: string) => {
             if (headers.indexOf(val) === -1) {
                 // We need to check for near matches
@@ -186,7 +198,6 @@ export class CardParser {
                 this.headers[val] = headers.indexOf(val);
             }
         });
-        console.log(`Current parsing errors: ${this.parsingErrors}`);
     }
 
 
@@ -203,24 +214,35 @@ export class CardParser {
         });
 
         // We set these from derived values so we always have them no matter in the input format
-        let quantityIndexHeader: number = ( typeof(this.headers.quantity) === 'undefined' ? headerRow.length : this.headers.quantity );
-        this.headers.quantity = quantityIndexHeader;
+        let quantityIndexHeader: number = -1;
+        if ( typeof(this.headers.quantity) === 'undefined' ) {
+            quantityIndexHeader = headerRow.length;
+            this.headers.quantity = quantityIndexHeader;
+            headerRow.push('quantity');
+        } else {
+            quantityIndexHeader = this.headers.quantity;
+        }
 
-        let foilIndexHeader: number = ( typeof(this.headers.foil) === 'undefined' ? headerRow.length : this.headers.foil );
-        this.headers.foil = foilIndexHeader;
-
-        console.log(`The quantity header is ${quantityIndexHeader} and the foil header is ${foilIndexHeader}`);
-        console.log(`${headerRow}`);
+        let foilIndexHeader: number = -1;
+        if ( typeof(this.headers.foil) === 'undefined' ) {
+            foilIndexHeader = headerRow.length;
+            this.headers.foil = foilIndexHeader;
+            headerRow.push('foil');
+        }
 
         data.forEach((row: string[]) => {
-            console.log(`Card before foil logic: ${row}`);
             if ( row != [] ) {
                 // Extract this logic back into the delver lens at some point
                 let foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
                 let isFoil: boolean = false;
                 if ( foilQuantity > 0 ) {
+                    // There might be normal cards and foil cards
+                    if ( Number(row[quantityIndexHeader]) > 0 ) {
+                        let newCard: string[] = [...row];
+                        newCard.push(String(isFoil));
+                        this.parseSingleCard(newCard, headerRow);
+                    }
                     isFoil = true;
-                    console.log(`Settign card to foil and setting the quantity to ${foilQuantity.toString()}`);
                     row[quantityIndexHeader] = foilQuantity.toString();
                 }
                 row.push(String(isFoil));
@@ -267,12 +289,10 @@ export class CardParser {
             }
             // Check if the card name and set exist in the cached data
             if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
-                console.log(`Checking for ${card.set_code.toLowerCase()} and ${card.name.toLowerCase()}`);
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
                     return;
                 } else {
-                    console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Card missing from Echo Cache`);
                     cardsToDelete.push(card);
                 }
             }
@@ -280,6 +300,25 @@ export class CardParser {
         cardsToDelete.map(this.deleteCard.bind(this));
 
         cb(undefined, this.parseResults());
+    }
+
+    /**
+     * Convert headers from things to close to the allowed, to the allowed
+     * @param headerRow
+     */
+    coerceHeaders(headerRow: string | undefined): string[] {
+        let headers: string[] = [];
+        if (headerRow) {
+            headerRow.split(',').forEach((header: string) => {
+                let newHeader: string | undefined = this.headerHelper.isValidHeader(header);
+                if (newHeader) {
+                    headers.push(newHeader);
+                } else {
+                    headers.push(header);
+                }
+            });
+        }
+        return headers
     }
 
 }
