@@ -39,18 +39,14 @@ You can upload a CSV using the exact headers above
 
 To install all requied libraries
 
-`npm install --prefix functions`
+`npm install`
 
 To run the code in development mode:
 
-`npm run --prefix functions dev`
+`RUN_LOCAL=1 npm run dev`
 
 To build the code:
 
-`npm run --prefix functions build`
-
-To deploy the code to firebase:
-
-`firebase deploy --only functions` 
+`npm run build`
 
 select CSV to upload, click submit
