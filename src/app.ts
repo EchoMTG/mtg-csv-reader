@@ -15,8 +15,8 @@ export class App {
         this.setMiddleware();
         this.setTemplateRoutes();
         this._config = new AppConfig();
+        console.log("Done configuring");
     }
-
     private setMiddleware() {
         // this._app.use(fileUpload());
         this._app.use(buildFileUploades);
