@@ -1,7 +1,5 @@
 import * as config from "../config.json";
 import * as request from "request-promise-native";
-import {Response} from "request";
-import {header} from "change-case";
 
 const DEFAULT_NAME_HEADERS: string[] = ['NAME', 'CARD NAME', 'CARD', 'Name', 'Card Name', 'Card', 'name'];
 const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED', 'ACQUIRED ON', 'ADDED', 'ACQUIRED_DATE', 'DATE_ACQUIRED', 'Date Acquired', 'acquired_date'];
@@ -64,7 +62,6 @@ export class AppConfig {
     [index: string]: any;
 
     constructor() {
-        this.getReferenceData();
         let configuration: ConfigFile = new ConfigFile();
 
         if (Object.keys(config).length) {
@@ -74,6 +71,10 @@ export class AppConfig {
         this.headers = this.getOrDefault(configuration, 'headers', DEFAULT_HEADERS);
         this.supportedMimeTypes = ['text/csv'];
         this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
+    }
+
+    async fetchEchoConfigData(): Promise<void> {
+        await this.getReferenceData();
     }
 
     getSetByCode(code: string) {
