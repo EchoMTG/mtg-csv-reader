@@ -1,7 +1,7 @@
 import * as express from "express"
 // import * as fileUpload from "express-fileupload"
 import {UploadProcessorResult, UploadProcessor, BasicCsvProcessor} from "./upload_processors/csv_processor";
-import {AppConfig} from "./util/definitions";
+import {AppConfig} from "./config/parser_config";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
 

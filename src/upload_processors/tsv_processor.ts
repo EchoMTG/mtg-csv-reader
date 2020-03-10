@@ -1,6 +1,6 @@
 import {UploadProcessor, UploadProcessorResult} from "./csv_processor";
 import {CardParser} from "../helpers/card_parser";
-import {AppConfig} from "../util/definitions";
+import {AppConfig} from "../config/parser_config";
 import * as fileUpload from "express-fileupload";
 
 
@@ -22,5 +22,6 @@ export class BasicTsvProcessor implements UploadProcessor {
     }
 
     processUpload(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
+        // NYI #TODO
     }
 }

@@ -1,7 +1,5 @@
 import * as config from "../config.json";
 import * as request from "request-promise-native";
-import {Response} from "request";
-import {header} from "change-case";
 
 const DEFAULT_NAME_HEADERS: string[] = ['NAME', 'CARD NAME', 'CARD', 'Name', 'Card Name', 'Card', 'name'];
 const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED', 'ACQUIRED ON', 'ADDED', 'ACQUIRED_DATE', 'DATE_ACQUIRED', 'Date Acquired', 'acquired_date'];
@@ -76,17 +74,29 @@ export class AppConfig {
         this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
     }
 
+    /**
+     * Query the reference data for a set name by querying by code
+     * @param code
+     */
     getSetByCode(code: string) {
         const index: number = this.setCodes.indexOf(code);
         return this.setNames[index];
     }
 
+    /**
+     * Query the reference data for a set code by querying on set name
+     * @param set
+     */
     getCodeBySet(set: string): string | undefined {
         const index: number = this.setNames.indexOf(set);
         if (index > -1) {
             return this.setCodes[index]
         }
     }
+
+    /**
+     * Async wrapper function to get both sets of lookup data from echo
+     */
     private async getReferenceData() {
         let setData = await this.getSetDeta();
         this.setCodes = Object.keys(setData.sets);
@@ -95,7 +105,7 @@ export class AppConfig {
     }
 
     /**
-     * Gather the set data from Echo so it doesn't need to be store locally
+     * Gather the [set] data from Echo so it doesn't need to be store locally
      *
      */
     private getSetDeta(): Promise<{ sets: { [index: string]: string } }> {
@@ -110,7 +120,7 @@ export class AppConfig {
     }
 
     /**
-     * Gather the set data from Echo so it doesn't need to be store locally
+     * Gather the [set -> Card List[ data from Echo so it doesn't need to be store locally
      *
      */
     private async getCardCache(): Promise<{ [index: string]: { [index: string]: string } }> {
@@ -125,8 +135,8 @@ export class AppConfig {
     }
 
     /**
-     *
-     * @param config
+     * Mimic a map function from other langs that allow you to pass a default if the key doesn't exist on an object
+     * @param configuration
      * @param key
      * @param defaultValue
      */

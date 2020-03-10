@@ -1,7 +1,7 @@
 import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
-import {AppConfig} from "../util/definitions";
+import {AppConfig} from "../config/parser_config"
 import {CardParser, ParsedCard, parsingStatus} from "../helpers/card_parser";
 
 export type UploadProcessorResult = {

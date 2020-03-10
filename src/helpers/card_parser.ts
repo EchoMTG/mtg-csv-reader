@@ -1,6 +1,5 @@
-import {AppConfig, HeaderHelper, headerHelper} from "../util/definitions";
+import {AppConfig, HeaderHelper, headerHelper} from "../config/parser_config";
 import {UploadProcessorResult} from "../upload_processors/csv_processor";
-import set = Reflect.set;
 
 export interface ParsedCard {
     name: string,
