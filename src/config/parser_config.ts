@@ -62,7 +62,6 @@ export class AppConfig {
     [index: string]: any;
 
     constructor() {
-        this.getReferenceData();
         let configuration: ConfigFile = new ConfigFile();
 
         if (Object.keys(config).length) {
@@ -76,8 +75,12 @@ export class AppConfig {
 
     /**
      * Query the reference data for a set name by querying by code
-     * @param code
+     *
      */
+    async fetchEchoConfigData(): Promise<void> {
+        await this.getReferenceData();
+    }
+
     getSetByCode(code: string) {
         const index: number = this.setCodes.indexOf(code);
         return this.setNames[index];

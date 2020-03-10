@@ -15,12 +15,17 @@ export class App {
         this.setMiddleware();
         this.setTemplateRoutes();
         this._config = new AppConfig();
-        console.log("Done configuring");
     }
+
     private setMiddleware() {
         // this._app.use(fileUpload());
         this._app.use(buildFileUploades);
         this._app.use(mimicUpload);
+    }
+
+    async startServer() {
+        await this._config.fetchEchoConfigData();
+        console.log("Done waiting on configuration");
     }
 
     setTemplateRoutes(): void {
@@ -36,14 +41,14 @@ export class App {
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             res.set('Access-Control-Allow-Origin', '*');
             const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
-            if (req.files === undefined ) {
+            if (req.files === undefined) {
                 res.send('No files were uploaded').status(400);
             } else {
-                if ( Array.isArray(req.files.csvFile) ) {
+                if (Array.isArray(req.files.csvFile)) {
                     // We need to process a multi part upload
                     let file: UploadedFile = req.files.csvFile[0];
-                    if ( csvProcessor.isSupportedMimeType(file.mimetype) ) {
-                        csvProcessor.processUpload(file, (err,data: UploadProcessorResult) => {
+                    if (csvProcessor.isSupportedMimeType(file.mimetype)) {
+                        csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
                             if (err) {
                                 console.log("Sending 400");
                                 res.send(data.parsingErrors).status(400);
@@ -55,8 +60,8 @@ export class App {
                         res.send('Bad file type').status(400);
                     }
                 } else {
-                    if ( csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype) ) {
-                        csvProcessor.processUpload(req.files.csvFile, (err,data: UploadProcessorResult) => {
+                    if (csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype)) {
+                        csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
                             if (err) {
                                 console.log("Sending a 400");
                                 res.send(data.parsingErrors).status(400);
@@ -74,4 +79,4 @@ export class App {
     }
 }
 
-export default new App;
+export default new App();
