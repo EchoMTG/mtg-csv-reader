@@ -9,7 +9,6 @@ const fileUpload = require("express-fileupload");
 
 let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
     if(req.rawBody === undefined && req.method === 'POST' && req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')){
-        console.log('getting the raw body for some reason');
         getRawBody(req, {
             length: req.headers['content-length'],
             limit: '10mb',
@@ -42,7 +41,6 @@ let mimicUpload = (req: Request, res: Response, next: NextFunction) => {
         busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
             const tmpdir = os.tmpdir();
             const filepath = path.join(tmpdir, filename);
-            console.log("Opening temp");
             let fileBuffer = fs.createWriteStream(filepath);
             let fileSize = 0;
 
