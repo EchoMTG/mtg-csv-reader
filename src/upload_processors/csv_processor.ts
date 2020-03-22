@@ -42,7 +42,7 @@ export class BasicCsvProcessor implements UploadProcessor {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = '/tmp/' + tmpfilename;
 
-        let parsingResult: UploadProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
+        const parsingResult: UploadProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
 
         file.mv(tmpfilepath, (err) => {
             if (err) {
@@ -66,12 +66,12 @@ export class BasicCsvProcessor implements UploadProcessor {
                 })
                 .on('data', (data: string[]) => {
                     const cleanData: string[] = data.map((value: string) => {
-                        value = value
+                        let cValue = value
                             .replace(/^'/, '')
                             .replace(/'$/, '')
                             .trim();
 
-                        return value;
+                        return cValue;
                     });
                     results.push(cleanData);
                 })

@@ -116,7 +116,7 @@ export class CardParser {
 
         // This is a workaround to allow Set to match to expansion
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
-            let unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
+            const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
             console.log(`Performing mysterSetWorkaround: ${unknownValue}`);
             if (unknownValue) {
                 // They passed a full expac name
@@ -133,7 +133,6 @@ export class CardParser {
                 }
             }
         }
-        console.log(`Derived quantity value: ${this.determineFieldValue(this.headers.quantity, details, '1') }`);
 
         parsedCard['foil'] = this.booleanCheck( this.determineFieldValue(this.headers.foil, details, 'false') );
         parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
@@ -142,7 +141,6 @@ export class CardParser {
         parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.price_acquired, details, '');
 
-        console.log(`Parsed Card: ${JSON.stringify(parsedCard)}`);
         this.cards.push(parsedCard);
     }
 
@@ -174,11 +172,10 @@ export class CardParser {
             const headerRow: string[] | undefined = inputRows.shift();
             if (Array.isArray(headerRow)) {
                 const checkRow: string[] = headerRow.map(val => val.toLowerCase());
-                let fixedHeader: string[] = this.coerceHeaders(checkRow.join(','));
-                console.log(`Final Coerced HEaders: ${fixedHeader}`);
-                this.validateHeaders(fixedHeader);
+                const fixedHeaders: string[] = this.coerceHeaders(checkRow.join(','));
+                this.validateHeaders(fixedHeaders);
                 if (this.parsingErrors.length <= 0) {
-                    this.parseRowsWithHeader(fixedHeader, inputRows);
+                    this.parseRowsWithHeader(fixedHeaders, inputRows);
                 }
             }
         }
@@ -191,8 +188,13 @@ export class CardParser {
     validateHeaders(headers: string[]) {
         ['name', 'set'].map((val: string) => {
             if (headers.indexOf(val) === -1) {
-                // We need to check for near matches
-                this.parsingErrors.push(`Missing Required Header: ${val}`);
+                // Note:
+                // This bit of code is here to support passing ONLY set_code, as thats how TCGPlayer does it
+                if ( val === 'set' && headers.indexOf('set_code') !== -1 ) {
+                    this.headers[val] = headers.indexOf(val);
+                } else {
+                    this.parsingErrors.push(`Missing Required Header: ${val}`);
+                }
             } else {
                 this.headers[val] = headers.indexOf(val);
             }
@@ -207,12 +209,17 @@ export class CardParser {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         headerRow.forEach((header: string, index: number) => {
-            if (this.appConfig.headers.indexOf(header.toLowerCase()) != -1) {
+            // Create the headers object by creating an object of key(header name) = value (header position )
+            if (this.appConfig.headers.indexOf(header.toLowerCase()) !== -1) {
                 this.headers[header.toLowerCase()] = index;
             }
         });
 
         // We set these from derived values so we always have them no matter in the input format
+        // Note:
+        // This block of code says
+        // - If we don't have an explicit quantity header
+        // - Add a quanity header to the end of both the headerRow and the headersObjects by fetching the maxLength
         let quantityIndexHeader: number = -1;
         if ( typeof(this.headers.quantity) === 'undefined' ) {
             quantityIndexHeader = headerRow.length;
@@ -222,27 +229,35 @@ export class CardParser {
             quantityIndexHeader = this.headers.quantity;
         }
 
+        // See above notes for this block, but replace quantity with foil
         let foilIndexHeader: number = -1;
         if ( typeof(this.headers.foil) === 'undefined' ) {
+            // We were unable to find a Foil header
             foilIndexHeader = headerRow.length;
             this.headers.foil = foilIndexHeader;
             headerRow.push('foil');
         }
 
         data.forEach((row: string[]) => {
-            if ( row != [] ) {
+            if ( row !== [] ) {
                 // Extract this logic back into the delver lens at some point
-                let foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
+                const foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
                 let isFoil: boolean = false;
                 if ( foilQuantity > 0 ) {
                     // There might be normal cards and foil cards
                     if ( Number(row[quantityIndexHeader]) > 0 ) {
-                        let newCard: string[] = [...row];
+                        const newCard: string[] = [...row];
                         newCard.push(String(isFoil));
                         this.parseSingleCard(newCard, headerRow);
                     }
                     isFoil = true;
                     row[quantityIndexHeader] = foilQuantity.toString();
+                } else{
+                    if ( headerRow.indexOf('printing') ) {
+                        // This is applying another TCGPlayer adjustment
+                        const foilHeaderIndex = headerRow.indexOf('printing');
+                        isFoil = this.parseFoilFromPrinting(row[foilHeaderIndex]);
+                    }
                 }
                 row.push(String(isFoil));
 
@@ -318,6 +333,11 @@ export class CardParser {
             });
         }
         return headers
+    }
+
+    parseFoilFromPrinting(printing: string) {
+        return printing.toLowerCase() === 'foil';
+
     }
 
 }
