@@ -6,7 +6,7 @@ const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED', 'ACQUIRED ON', 'ADDED', 'ACQ
 const DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE', 'VALUE', 'ACQUIRED_VALUE', 'PRICE_ACQUIRED', 'ACQUIRED_PRICE', 'Price', 'Value', 'acquired', 'Acquired', 'acquired_price'];
 const DEFAULT_CONDITION_HEADERS: string[] = ['CONDITION', 'Condition'];
 const DEFAULT_SET_HEADERS: string[] = ['EXPANSION', 'SET', 'PRINTING', 'Set', 'Expansion', 'set', 'expansion'];
-const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE', 'CODE', 'Code', 'Set Code'];
+const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE', 'CODE', 'Code', 'set code'];
 const DEFAULT_HEADERS: string[] = ['name', 'expansion', 'set_code', 'date_acquired', 'price_acquired', 'condition', 'foil', 'language', 'quantity'];
 const DEFAULT_LANGS: string[] = ['EN', 'GR', 'FR', 'SP', 'CS', 'IT', 'JP', 'CT', 'KR', 'RU', 'English', 'French', 'Spanish', 'Chinese - Simplified', 'Italian', 'Japanese', 'Chinese - Traditional', 'Korean', 'Russian'];
 const DEFAULT_QUANTITY_HEADERS: string[] = ['reg qty', 'quantity', 'Quantity'];
@@ -37,6 +37,7 @@ export class HeaderHelper {
         let matchedHeader: string | undefined = undefined;
         goodHeaderList.forEach((goodHeader: string) => {
             if (this.defaultHeaders[goodHeader].indexOf(testHeader) !== -1) {
+                console.log(`Found match: ${goodHeader}`);
                 matchedHeader = goodHeader;
             }
         });
@@ -113,7 +114,7 @@ export class AppConfig {
      */
     private getSetDeta(): Promise<{ sets: { [index: string]: string } }> {
         return new Promise((resolve, reject) => {
-            request({uri: 'https://dev.echomtg.com/api/data/set_reference/'}).then((body) => {
+            request({uri: 'https://www.echomtg.com/api/data/set_reference/'}).then((body) => {
                 const data: { sets: { [index: string]: string } } = JSON.parse(body);
                 resolve(data);
             }).catch((err) => {
@@ -128,7 +129,7 @@ export class AppConfig {
      */
     private async getCardCache(): Promise<{ [index: string]: { [index: string]: string } }> {
         return new Promise((resolve, reject) => {
-            request({uri: 'https://dev.echomtg.com/api/data/lookup/'}).then((body) => {
+            request({uri: 'https://assets.echomtg.com/data/lookup.json'}).then((body) => {
                 const data:  { [index: string]: { [index: string]: string } } = JSON.parse(body.toString().toLowerCase());
                 resolve(data);
             }).catch((err) => {
