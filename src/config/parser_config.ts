@@ -1,12 +1,12 @@
 import * as config from "../config.json";
 import * as request from "request-promise-native";
 
-const DEFAULT_NAME_HEADERS: string[] = ['NAME', 'CARD NAME', 'CARD', 'Name', 'Card Name', 'Card', 'name'];
-const DEFAULT_DATE_HEADERS: string[] = ['ACQUIRED', 'ACQUIRED ON', 'ADDED', 'ACQUIRED_DATE', 'DATE_ACQUIRED', 'Date Acquired', 'acquired_date'];
-const DEFAULT_PRICE_HEADERS: string[] = ['ACQUIRED PRICE', 'VALUE', 'ACQUIRED_VALUE', 'PRICE_ACQUIRED', 'ACQUIRED_PRICE', 'Price', 'Value', 'acquired', 'Acquired', 'acquired_price'];
-const DEFAULT_CONDITION_HEADERS: string[] = ['CONDITION', 'Condition'];
-const DEFAULT_SET_HEADERS: string[] = ['EXPANSION', 'SET', 'PRINTING', 'Set', 'Expansion', 'set', 'expansion'];
-const DEFAULT_SET_CODE_HEADERS: string[] = ['SET_CODE', 'CODE', 'Code', 'set code'];
+const DEFAULT_NAME_HEADERS: string[] = ['card name', 'card', 'name'];
+const DEFAULT_DATE_HEADERS: string[] = ['acquired', 'acquired on', 'added', 'acquired_date', 'date_acquired', 'date acquired', 'acquired_date'];
+const DEFAULT_PRICE_HEADERS: string[] = ['acquired price', 'value', 'acquired_value', 'price_acquired', 'price', 'acquired', 'acquired_price','price each'];
+const DEFAULT_CONDITION_HEADERS: string[] = ['condition'];
+const DEFAULT_SET_HEADERS: string[] = ['set', 'expansion'];
+const DEFAULT_SET_CODE_HEADERS: string[] = ['set_code', 'code',  'set code'];
 const DEFAULT_HEADERS: string[] = ['name', 'expansion', 'set_code', 'date_acquired', 'price_acquired', 'condition', 'foil', 'language', 'quantity'];
 const DEFAULT_LANGS: string[] = ['EN', 'GR', 'FR', 'SP', 'CS', 'IT', 'JP', 'CT', 'KR', 'RU', 'English', 'French', 'Spanish', 'Chinese - Simplified', 'Italian', 'Japanese', 'Chinese - Traditional', 'Korean', 'Russian'];
 const DEFAULT_QUANTITY_HEADERS: string[] = ['reg qty', 'quantity', 'Quantity'];

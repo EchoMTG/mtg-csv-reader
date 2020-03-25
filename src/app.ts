@@ -44,42 +44,45 @@ export class App {
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
-            if (req.files === undefined) {
-                res.send('No files were uploaded').status(400);
-            } else {
-                if (Array.isArray(req.files.csvFile)) {
-                    // We need to process a multi part upload
-                    let file: UploadedFile = req.files.csvFile[0];
-                    if (csvProcessor.isSupportedMimeType(file.mimetype)) {
-                        csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
-                            if (err) {
-                                console.log("Sending 400");
-                                res.send(data.parsingErrors).status(400);
-                            } else {
-                                console.log(data);
-                                res.send(data).status(200);
-                            }
-                        });
-                    } else {
-                        res.send('Bad file type').status(400);
-                    }
+            this._config.fetchEchoConfigData().then(() => {
+                const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
+                if (req.files === undefined) {
+                    res.send('No files were uploaded').status(400);
                 } else {
-                    if (csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype)) {
-                        csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
-                            if (err) {
-                                console.log("Sending a 400");
-                                res.send(data.parsingErrors).status(400);
-                            } else {
-                                console.log(data);
-                                res.send(data).status(200);
-                            }
-                        });
+                    if (Array.isArray(req.files.csvFile)) {
+                        // We need to process a multi part upload
+                        let file: UploadedFile = req.files.csvFile[0];
+                        if (csvProcessor.isSupportedMimeType(file.mimetype)) {
+                            csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
+                                if (err) {
+                                    console.log("Sending 400");
+                                    res.send(data.parsingErrors).status(400);
+                                } else {
+                                    console.log(data);
+                                    res.send(data).status(200);
+                                }
+                            });
+                        } else {
+                            res.send('Bad file type').status(400);
+                        }
                     } else {
-                        res.send('Bad file type').status(400);
+                        if (csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype)) {
+                            csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
+                                if (err) {
+                                    console.log("Sending a 400");
+                                    res.send(data.parsingErrors).status(400);
+                                } else {
+                                    console.log(data);
+                                    res.send(data).status(200);
+                                }
+                            });
+                        } else {
+                            res.send('Bad file type').status(400);
+                        }
                     }
                 }
-            }
+            });
+
         });
     }
 }
