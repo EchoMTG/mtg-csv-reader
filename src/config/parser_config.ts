@@ -114,7 +114,7 @@ export class AppConfig {
      */
     private getSetDeta(): Promise<{ sets: { [index: string]: string } }> {
         return new Promise((resolve, reject) => {
-            request({uri: 'https://dev.echomtg.com/api/data/set_reference/'}).then((body) => {
+            request({uri: 'https://www.echomtg.com/api/data/set_reference/'}).then((body) => {
                 const data: { sets: { [index: string]: string } } = JSON.parse(body);
                 resolve(data);
             }).catch((err) => {

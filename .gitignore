@@ -13,3 +13,4 @@ lib/
 .env
 ./tmp/*
 
+**/.DS_Store

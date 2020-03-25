@@ -4,6 +4,7 @@ import {UploadProcessorResult, UploadProcessor, BasicCsvProcessor} from "./uploa
 import {AppConfig} from "./config/parser_config";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
+import * as cors from "cors";
 
 
 export class App {
@@ -19,6 +20,10 @@ export class App {
 
     private setMiddleware() {
         // this._app.use(fileUpload());
+        let corsOptions = {
+            origin: '*'
+        };
+        this._app.use(cors(corsOptions));
         this._app.use(buildFileUploades);
         this._app.use(mimicUpload);
     }
@@ -39,7 +44,6 @@ export class App {
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            res.set('Access-Control-Allow-Origin', '*');
             const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
             if (req.files === undefined) {
                 res.send('No files were uploaded').status(400);
@@ -53,6 +57,7 @@ export class App {
                                 console.log("Sending 400");
                                 res.send(data.parsingErrors).status(400);
                             } else {
+                                console.log(data);
                                 res.send(data).status(200);
                             }
                         });
