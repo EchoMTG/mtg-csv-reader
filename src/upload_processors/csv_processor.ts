@@ -66,12 +66,10 @@ export class BasicCsvProcessor implements UploadProcessor {
                 })
                 .on('data', (data: string[]) => {
                     const cleanData: string[] = data.map((value: string) => {
-                        let cValue = value
+                        return value
                             .replace(/^'/, '')
                             .replace(/'$/, '')
                             .trim();
-
-                        return cValue;
                     });
                     results.push(cleanData);
                 })
