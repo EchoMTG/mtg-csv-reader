@@ -35,7 +35,6 @@ export class HeaderHelper {
     isValidHeader(testHeader: string): string | undefined {
         let goodHeaderList: string[] = Object.keys(this.defaultHeaders);
         let matchedHeader: string | undefined = undefined;
-        console.log(`Validating: ${testHeader}`);
         goodHeaderList.forEach((goodHeader: string) => {
             if (this.defaultHeaders[goodHeader].indexOf(testHeader) !== -1) {
                 console.log(`Found match: ${goodHeader}`);

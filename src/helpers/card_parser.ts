@@ -252,14 +252,13 @@ export class CardParser {
                     }
                     isFoil = true;
                     row[quantityIndexHeader] = foilQuantity.toString();
+                } else {
+                    if ( headerRow.indexOf('printing') > -1 ) {
+                        // This is applying another TCGPlayer adjustment
+                        const foilHeaderIndex = headerRow.indexOf('printing');
+                        isFoil = this.parseFoilFromPrinting(row[foilHeaderIndex]);
+                    }
                 }
-                //else{
-                //     if ( headerRow.indexOf('printing') ) {
-                //         // This is applying another TCGPlayer adjustment
-                //         const foilHeaderIndex = headerRow.indexOf('printing');
-                //         isFoil = this.parseFoilFromPrinting(row[foilHeaderIndex]);
-                //     }
-                // }
                 row.push(String(isFoil));
 
                 this.parseSingleCard(row, headerRow);
