@@ -85,8 +85,6 @@ export class CardParser {
         }
 
 
-
-
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
         parsedCard['set_code'] = details[this.headers.set_code];
@@ -108,8 +106,8 @@ export class CardParser {
         }
 
         if (parsedCard['expansion'] && !parsedCard['set_code']) {
-            let setCode: string|undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
-            if ( setCode ) {
+            let setCode: string | undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
+            if (setCode) {
                 parsedCard['set_code'] = setCode;
             }
         }
@@ -124,7 +122,7 @@ export class CardParser {
                 parsedCard['expansion'] = details[this.headers['set']];
             } else {
                 // They passed a set code as Set OR they passed an unknown set name
-                if ( this.appConfig.setCodes.includes(details[this.headers['set']]) ) {
+                if (this.appConfig.setCodes.includes(details[this.headers['set']])) {
                     parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
                     parsedCard['set_code'] = details[this.headers['set']];
                 } else {
@@ -134,7 +132,13 @@ export class CardParser {
             }
         }
 
-        parsedCard['foil'] = this.booleanCheck( this.determineFieldValue(this.headers.foil, details, 'false') );
+        if (this.headers.condition) {
+            parsedCard.extra_details['original_condition'] = details[this.headers.condition];
+            details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
+        }
+
+
+        parsedCard['foil'] = this.booleanCheck(this.determineFieldValue(this.headers.foil, details, 'false'));
         parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
@@ -142,6 +146,29 @@ export class CardParser {
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.price_acquired, details, '');
 
         this.cards.push(parsedCard);
+    }
+
+    /**
+     * Convert a wordy condition into a code
+     * @param originalCondition
+     */
+    coerceCondition(originalCondition: string): string {
+        let newCondition: string = originalCondition;
+        if (originalCondition.split(' ').length > 1) {
+            newCondition = '';
+            originalCondition.split(' ').forEach((word: string) => {
+                newCondition += word[0].toLowerCase();
+            });
+            return newCondition;
+        } else {
+            if (originalCondition.length > 2) {
+                return originalCondition[0].toLowerCase();
+            } else {
+                return originalCondition;
+            }
+        }
+
+
     }
 
     booleanCheck(value: string): boolean {
@@ -155,7 +182,7 @@ export class CardParser {
      * @param defaultValue
      */
     determineFieldValue(test: number | undefined, values: string[], defaultValue: string): string {
-        if ( typeof(test) === 'undefined' ) {
+        if (typeof (test) === 'undefined') {
             return defaultValue;
         } else {
             return values[test];
@@ -190,7 +217,7 @@ export class CardParser {
             if (headers.indexOf(val) === -1) {
                 // Note:
                 // This bit of code is here to support passing ONLY set_code, as thats how TCGPlayer does it
-                if ( val === 'set' && headers.indexOf('set_code') !== -1 ) {
+                if (val === 'set' && headers.indexOf('set_code') !== -1) {
                     this.headers[val] = headers.indexOf(val);
                 } else {
                     this.parsingErrors.push(`Missing Required Header: ${val}`);
@@ -221,7 +248,7 @@ export class CardParser {
         // - If we don't have an explicit quantity header
         // - Add a quanity header to the end of both the headerRow and the headersObjects by fetching the maxLength
         let quantityIndexHeader: number = -1;
-        if ( typeof(this.headers.quantity) === 'undefined' ) {
+        if (typeof (this.headers.quantity) === 'undefined') {
             quantityIndexHeader = headerRow.length;
             this.headers.quantity = quantityIndexHeader;
             headerRow.push('quantity');
@@ -231,7 +258,7 @@ export class CardParser {
 
         // See above notes for this block, but replace quantity with foil
         let foilIndexHeader: number = -1;
-        if ( typeof(this.headers.foil) === 'undefined' ) {
+        if (typeof (this.headers.foil) === 'undefined') {
             // We were unable to find a Foil header
             foilIndexHeader = headerRow.length;
             this.headers.foil = foilIndexHeader;
@@ -239,13 +266,13 @@ export class CardParser {
         }
 
         data.forEach((row: string[]) => {
-            if ( row !== [] ) {
+            if (row !== []) {
                 // Extract this logic back into the delver lens at some point
                 const foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
                 let isFoil: boolean = false;
-                if ( foilQuantity > 0 ) {
+                if (foilQuantity > 0) {
                     // There might be normal cards and foil cards
-                    if ( Number(row[quantityIndexHeader]) > 0 ) {
+                    if (Number(row[quantityIndexHeader]) > 0) {
                         const newCard: string[] = [...row];
                         newCard.push(String(isFoil));
                         this.parseSingleCard(newCard, headerRow);
@@ -253,7 +280,7 @@ export class CardParser {
                     isFoil = true;
                     row[quantityIndexHeader] = foilQuantity.toString();
                 } else {
-                    if ( headerRow.indexOf('printing') > -1 ) {
+                    if (headerRow.indexOf('printing') > -1) {
                         // This is applying another TCGPlayer adjustment
                         const foilHeaderIndex = headerRow.indexOf('printing');
                         isFoil = this.parseFoilFromPrinting(row[foilHeaderIndex]);

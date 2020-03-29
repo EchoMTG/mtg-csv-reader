@@ -37,7 +37,6 @@ export class HeaderHelper {
         let matchedHeader: string | undefined = undefined;
         goodHeaderList.forEach((goodHeader: string) => {
             if (this.defaultHeaders[goodHeader].indexOf(testHeader) !== -1) {
-                console.log(`Found match: ${goodHeader}`);
                 matchedHeader = goodHeader;
             }
         });
