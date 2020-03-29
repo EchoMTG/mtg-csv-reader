@@ -2,7 +2,7 @@ import * as config from "../config.json";
 import * as request from "request-promise-native";
 
 const DEFAULT_NAME_HEADERS: string[] = ['card name', 'card', 'name'];
-const DEFAULT_DATE_HEADERS: string[] = ['acquired', 'acquired on', 'added', 'acquired_date', 'date_acquired', 'date acquired', 'acquired_date'];
+const DEFAULT_DATE_HEADERS: string[] = ['acquired', 'acquired on', 'added', 'acquired_date', 'date_acquired', 'date acquired', 'acquired date'];
 const DEFAULT_PRICE_HEADERS: string[] = ['acquired price', 'value', 'acquired_value', 'price_acquired', 'price', 'acquired', 'acquired_price','price each'];
 const DEFAULT_CONDITION_HEADERS: string[] = ['condition'];
 const DEFAULT_SET_HEADERS: string[] = ['set', 'expansion'];
