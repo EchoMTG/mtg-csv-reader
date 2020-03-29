@@ -23,7 +23,7 @@ export interface parsingStatus {
 
     expansion?: number | undefined;
     set_code: number;
-    acquire_date?: number | undefined;
+    date_acquired?: number | undefined;
     price_acquired?: number | undefined;
     foil?: number | undefined;
     condition?: number | undefined;
@@ -138,7 +138,7 @@ export class CardParser {
         parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
-        parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
+        parsedCard['acquire_date'] = this.determineFieldValue(this.headers.date_acquired, details, '');
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.price_acquired, details, '');
 
         this.cards.push(parsedCard);
