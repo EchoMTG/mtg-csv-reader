@@ -25,6 +25,10 @@ myHeaderHelper['quantity'] = DEFAULT_QUANTITY_HEADERS;
 myHeaderHelper['foil_quantity'] = DEFAULT_FOIL_QUANTITY_HEADERS;
 myHeaderHelper['language'] = ['lang', 'language'];
 
+type knownHeaderFormats = {
+    [index: string]: string[]
+}
+
 export class HeaderHelper {
     defaultHeaders: { [index: string]: string[] };
 
@@ -59,6 +63,7 @@ export class AppConfig {
     setCodes: string[] = [];
     includeUnknownFields: boolean;
     cardCache: { [index: string]: { [index: string]: string } } = {};
+    knownUploadHeaders: knownHeaderFormats = {};
 
     [index: string]: any;
 
@@ -72,6 +77,7 @@ export class AppConfig {
         this.headers = this.getOrDefault(configuration, 'headers', DEFAULT_HEADERS);
         this.supportedMimeTypes = ['text/csv'];
         this.includeUnknownFields = this.getOrDefault(configuration, 'return_unknown_fields', false);
+        this.loadKnownHeaders();
     }
 
     /**
@@ -150,6 +156,16 @@ export class AppConfig {
         } else {
             return defaultValue;
         }
+    }
+
+    /**
+     * Loads sets of known header upload formats for us to more quickly determine how to parse a file
+     */
+    private loadKnownHeaders() {
+        // TCGPlayer
+        this.knownUploadHeaders['tcg_player'] = ['printing'];
+        // Delver Lens
+        this.knownUploadHeaders['delver_lens'] = ['reg qty','foil_qty'];
     }
 
 

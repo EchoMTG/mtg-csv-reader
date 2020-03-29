@@ -5,16 +5,19 @@ import {AppConfig} from "./config/parser_config";
 import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
 import * as cors from "cors";
+import {ProcessorMux, UploadHandler} from "./upload_processors/processor_mux";
 
 
 export class App {
     _app: express.Application;
     _config: AppConfig;
+    ulMux: ProcessorMux;
 
     constructor() {
         this._app = express();
         this.setMiddleware();
         this.setTemplateRoutes();
+        this.ulMux = new ProcessorMux();
         this._config = new AppConfig();
     }
 
@@ -45,66 +48,21 @@ export class App {
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             this._config.fetchEchoConfigData().then(() => {
-                const csvProcessor: UploadProcessor = new BasicCsvProcessor(this._config);
-                if (req.files === undefined) {
-                    res.send('No files were uploaded').status(400);
-                } else {
-                    if (Array.isArray(req.files.csvFile)) {
-                        // We need to process a multi part upload
-                        const file: UploadedFile = req.files.csvFile[0];
-                        /**
-                         * These else blocks have teh same logic so that its easier to remember in the future to switch on the upload type.
-                         */
-                        if (csvProcessor.isSupportedMimeType(file.mimetype)) {
-                            csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
-                                if (err) {
-                                    console.log("Sending 400");
-                                    res.send(data.parsingErrors).status(400);
-                                } else {
-                                    console.log(data);
-                                    res.send(data).status(200);
-                                }
-                            });
-                        } else {
-                            csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
-                                if (err) {
-                                    console.log("Sending 400");
-                                    res.send(data.parsingErrors).status(400);
-                                } else {
-                                    console.log(data);
-                                    res.send(data).status(200);
-                                }
-                            });
-                        }
-                    } else {
-                        /**
-                         * These else blocks have teh same logic so that its easier to remember in the future to switch on the upload type.
-                         */
-                        if (csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype)) {
-                            csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
-                                if (err) {
-                                    console.log("Sending a 400");
-                                    res.send(data.parsingErrors).status(400);
-                                } else {
-                                    console.log(data);
-                                    res.send(data).status(200);
-                                }
-                            });
-                        } else {
-                            csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
-                                if (err) {
-                                    console.log("Sending a 400");
-                                    res.send(data.parsingErrors).status(400);
-                                } else {
-                                    console.log(data);
-                                    res.send(data).status(200);
-                                }
-                            });
-                        }
-                    }
+                if ( typeof(req.files) !== 'undefined' ) {
+                    ProcessorMux.switch(req.files.csvFile, this._config).then((handler: UploadHandler) => {
+                        const file: UploadedFile = ( Array.isArray(req.files.csvFile) ? req.files.csvFile[0] : req.files.csvFile) );
+                        processor.processUpload(file, (err, data: UploadProcessorResult) => {
+                            if (err) {
+                                console.log("Sending 400");
+                                res.send(data.parsingErrors).status(400);
+                            } else {
+                                console.log(data);
+                                res.send(data).status(200);
+                            }
+                        });
+                    });
                 }
             });
-
         });
     }
 }
