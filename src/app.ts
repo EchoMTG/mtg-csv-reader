@@ -51,7 +51,10 @@ export class App {
                 } else {
                     if (Array.isArray(req.files.csvFile)) {
                         // We need to process a multi part upload
-                        let file: UploadedFile = req.files.csvFile[0];
+                        const file: UploadedFile = req.files.csvFile[0];
+                        /**
+                         * These else blocks have teh same logic so that its easier to remember in the future to switch on the upload type.
+                         */
                         if (csvProcessor.isSupportedMimeType(file.mimetype)) {
                             csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
                                 if (err) {
@@ -63,9 +66,20 @@ export class App {
                                 }
                             });
                         } else {
-                            res.send('Bad file type').status(400);
+                            csvProcessor.processUpload(file, (err, data: UploadProcessorResult) => {
+                                if (err) {
+                                    console.log("Sending 400");
+                                    res.send(data.parsingErrors).status(400);
+                                } else {
+                                    console.log(data);
+                                    res.send(data).status(200);
+                                }
+                            });
                         }
                     } else {
+                        /**
+                         * These else blocks have teh same logic so that its easier to remember in the future to switch on the upload type.
+                         */
                         if (csvProcessor.isSupportedMimeType(req.files.csvFile.mimetype)) {
                             csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
                                 if (err) {
@@ -77,7 +91,15 @@ export class App {
                                 }
                             });
                         } else {
-                            res.send('Bad file type').status(400);
+                            csvProcessor.processUpload(req.files.csvFile, (err, data: UploadProcessorResult) => {
+                                if (err) {
+                                    console.log("Sending a 400");
+                                    res.send(data.parsingErrors).status(400);
+                                } else {
+                                    console.log(data);
+                                    res.send(data).status(200);
+                                }
+                            });
                         }
                     }
                 }
