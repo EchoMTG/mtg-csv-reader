@@ -80,7 +80,7 @@ export class CardParser {
                     } else {
                         parsedCard.extra_details[other_headers[index]] = details[index];
                     }
-                }
+                }0
             });
         }
 
@@ -167,10 +167,12 @@ export class CardParser {
                 return originalCondition;
             }
         }
-
-
     }
 
+    /**
+     * Return a boolean from a common list of things that might mean true
+     * @param value
+     */
     booleanCheck(value: string): boolean {
         return ['true', 'True', 'yes', 'Yes', 'Y', 'y'].indexOf(value) > -1;
     }
@@ -248,10 +250,12 @@ export class CardParser {
         // - If we don't have an explicit quantity header
         // - Add a quanity header to the end of both the headerRow and the headersObjects by fetching the maxLength
         let quantityIndexHeader: number = -1;
+        let boolDefaultQuantity: boolean = false;
         if (typeof (this.headers.quantity) === 'undefined') {
             quantityIndexHeader = headerRow.length;
             this.headers.quantity = quantityIndexHeader;
             headerRow.push('quantity');
+            boolDefaultQuantity = true;
         } else {
             quantityIndexHeader = this.headers.quantity;
         }
@@ -268,6 +272,9 @@ export class CardParser {
         data.forEach((row: string[]) => {
             if (row !== []) {
                 // Extract this logic back into the delver lens at some point
+                if ( boolDefaultQuantity ) {
+                    row.push('1');
+                }
                 const foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
                 let isFoil: boolean = false;
                 if (foilQuantity > 0) {
@@ -317,10 +324,14 @@ export class CardParser {
 
     /**
      * Validate echo API dataset
+     * - For each card
+     * - If the card has no set_code, delete
+     * - If the card has a set code, but that set doesn't exist in the echo cache, delete
+     * - If the card has a valid set, but the card name doesn't exist in that set, delete it
      * @param cb
      */
     parseCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
-        let cardsToDelete: ParsedCard[] = [];
+        const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
             if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
@@ -336,6 +347,9 @@ export class CardParser {
                 } else {
                     cardsToDelete.push(card);
                 }
+            } else {
+                // The setcode is invalid
+                cardsToDelete.push(card);
             }
         });
         cardsToDelete.map(this.deleteCard.bind(this));
@@ -348,10 +362,10 @@ export class CardParser {
      * @param headerRow
      */
     coerceHeaders(headerRow: string | undefined): string[] {
-        let headers: string[] = [];
+        const headers: string[] = [];
         if (headerRow) {
             headerRow.split(',').forEach((header: string) => {
-                let newHeader: string | undefined = this.headerHelper.isValidHeader(header);
+                const newHeader: string | undefined = this.headerHelper.isValidHeader(header);
                 if (newHeader) {
                     headers.push(newHeader);
                 } else {
