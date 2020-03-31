@@ -6,6 +6,7 @@ import {buildFileUploades, mimicUpload} from "./middleware/gcf";
 import {UploadedFile} from "express-fileupload";
 import * as cors from "cors";
 import {ProcessorMux, UploadHandler} from "./upload_processors/processor_mux";
+import {generateFile} from "./helpers/util";
 
 
 export class App {
@@ -48,20 +49,23 @@ export class App {
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
             this._config.fetchEchoConfigData().then(() => {
-                if ( typeof(req.files) !== 'undefined' ) {
-                    ProcessorMux.switch(req.files.csvFile, this._config).then((handler: UploadHandler) => {
-                        const file: UploadedFile = ( Array.isArray(req.files.csvFile) ? req.files.csvFile[0] : req.files.csvFile) );
-                        processor.processUpload(file, (err, data: UploadProcessorResult) => {
-                            if (err) {
-                                console.log("Sending 400");
-                                res.send(data.parsingErrors).status(400);
-                            } else {
-                                console.log(data);
-                                res.send(data).status(200);
-                            }
-                        });
-                    });
+                if ( typeof(req.files) === 'undefined' ) {
+                    req.files = {
+                        csvFile: []
+                    };
                 }
+                ProcessorMux.switch(req.files.csvFile, this._config).then((handler: UploadHandler) => {
+                    if (typeof (handler.file) === 'undefined') {
+                        handler.file = generateFile(req.body);
+                    }
+                    handler.processor.processUpload(handler.file, (err, data: UploadProcessorResult) => {
+                        if (err) {
+                            res.send(data.parsingErrors).status(400);
+                        } else {
+                            res.send(data).status(200);
+                        }
+                    });
+                });
             });
         });
     }

@@ -1,7 +1,8 @@
 import {UploadProcessor, UploadProcessorResult} from "./csv_processor";
-import {CardParser} from "../helpers/card_parser";
+import {BestEffortCardParser} from "../card_parsers/card_parser";
 import {AppConfig} from "../config/parser_config";
 import * as fileUpload from "express-fileupload";
+import {CardParser} from "../card_parsers";
 
 
 export class RawBodyProcessor implements UploadProcessor {
@@ -9,7 +10,7 @@ export class RawBodyProcessor implements UploadProcessor {
     supportedMimeTypes: string[];
 
     constructor(config: AppConfig) {
-        this.cardParser = new CardParser(config);
+        this.cardParser = new BestEffortCardParser(config);
         this.supportedMimeTypes = ['text/plain'];
     }
 
