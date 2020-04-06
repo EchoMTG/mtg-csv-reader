@@ -2,6 +2,7 @@ import {AppConfig} from "../config/parser_config";
 import {UploadProcessorResult} from "../upload_processors/csv_processor";
 import {headerHelper, HeaderHelper} from "../helpers/header_helper";
 import {CardParser, ParsedCard, parsingStatus} from "./index";
+import {coerceLanguage, validateCondition, validateLanguage} from "../helpers/value_coercer";
 
 
 export class BestEffortCardParser implements CardParser{
@@ -13,6 +14,7 @@ export class BestEffortCardParser implements CardParser{
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
+        console.log(`Createing a BestEffortCardParser using ${appConfig}`);
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -26,7 +28,7 @@ export class BestEffortCardParser implements CardParser{
     parseSingleCard(details: string[], other_headers?: string[]): void {
         const parsedCard: ParsedCard = {
             foil: false,
-            language: 'EN',
+            language: 'en',
             acquire_date: '',
             acquire_price: '',
             expansion: '',
@@ -103,10 +105,10 @@ export class BestEffortCardParser implements CardParser{
             }
         }
 
-        if (this.headers.condition) {
-            parsedCard.extra_details['original_condition'] = details[this.headers.condition];
-            details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
-        }
+        // if (this.headers.condition) {
+        //     parsedCard.extra_details['original_condition'] = details[this.headers.condition];
+        //     details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
+        // }
 
 
         parsedCard['foil'] = this.booleanCheck(this.determineFieldValue(this.headers.foil, details, 'false'));
@@ -314,6 +316,7 @@ export class BestEffortCardParser implements CardParser{
             if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    this.coerceOutputValues(card);
                     return;
                 } else {
                     cardsToDelete.push(card);
@@ -326,6 +329,27 @@ export class BestEffortCardParser implements CardParser{
         cardsToDelete.map(this.deleteCard.bind(this));
 
         cb(undefined, this.parseResults());
+    }
+
+    /**
+     * Bundle function to run all the planned output coercion
+     * @param card
+     */
+    coerceOutputValues(card: ParsedCard): void {
+        // Check for value coercions
+        if ( card.language !== 'en' ) {
+            // They passed in a value for language
+            if ( card.language.length > 2 ) {
+                // They passed in a long name
+                card.language = coerceLanguage(card.language);
+            } else {
+                card.language = validateLanguage(card.language);
+            }
+        }
+
+        if ( card.condition !== '' ) {
+            card.condition = validateCondition(card.condition);
+        }
     }
 
     /**

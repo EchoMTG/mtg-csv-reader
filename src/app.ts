@@ -15,11 +15,11 @@ export class App {
     ulMux: ProcessorMux;
 
     constructor() {
+        this._config = new AppConfig();
         this._app = express();
         this.setMiddleware();
         this.setTemplateRoutes();
         this.ulMux = new ProcessorMux();
-        this._config = new AppConfig();
     }
 
     private setMiddleware() {

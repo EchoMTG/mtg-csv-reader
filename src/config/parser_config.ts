@@ -3,8 +3,6 @@ import * as request from "request-promise-native";
 import {DEFAULT_HEADERS} from "../helpers/header_helper";
 
 
-
-
 class ConfigFile {
     [index: string]: string[] | RegExp;
 }

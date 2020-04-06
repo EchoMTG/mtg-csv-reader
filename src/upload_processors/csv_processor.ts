@@ -21,20 +21,23 @@ export interface UploadProcessor {
 export class BasicCsvProcessor implements UploadProcessor {
     parsingConfig: AppConfig;
     supportedMimeTypes: string[];
-    knownUploadHeaders: knownHeaderFormats = {
-        'tcg_player_app_ios': {
-            headers: ['quantity', 'name', 'set code', 'printing', 'language'],
-            parser: new BestEffortCardParser(this.parsingConfig)
-        },
-        'delver_lens': {
-            headers: ['reg qty', 'foil qty', 'name', 'set', 'acquired', 'Language'],
-            parser: new BestEffortCardParser(this.parsingConfig)
-        }
-    };
+    knownUploadHeaders: knownHeaderFormats = {};
 
     constructor(config: AppConfig) {
         this.parsingConfig = config;
         this.supportedMimeTypes = ['text/csv'];
+        this.knownUploadHeaders = {
+            'tcg_player_app_ios': {
+                headers: ['quantity', 'name', 'set code', 'printing', 'language'],
+                //TODO - Replace with specific parser
+                parser: new BestEffortCardParser(this.parsingConfig)
+            },
+            'delver_lens': {
+                headers: ['reg qty', 'foil qty', 'name', 'set', 'acquired', 'Language'],
+                //TODO - Replace with specific parser
+                parser: new BestEffortCardParser(this.parsingConfig)
+            }
+        };
     }
 
     /**
@@ -45,8 +48,8 @@ export class BasicCsvProcessor implements UploadProcessor {
     DetermineCardParser(headers: string[]): Promise<CardParserDecision> {
         return new Promise<CardParserDecision>((resolve, reject) => {
             const sources: string[] = Object.keys(this.knownUploadHeaders);
-            for( const source of sources) {
-                if ( this.headerCheck(headers, this.knownUploadHeaders[source].headers) ) {
+            for (const source of sources) {
+                if (this.headerCheck(headers, this.knownUploadHeaders[source].headers)) {
                     console.log("Matched a known upload format: " + source);
                     return resolve({
                         headers: headers, cardParser: this.knownUploadHeaders[source].parser
@@ -68,7 +71,7 @@ export class BasicCsvProcessor implements UploadProcessor {
         return this.supportedMimeTypes.includes(type);
     }
 
-    headerCheck(arr: string[], target:string[]) {
+    headerCheck(arr: string[], target: string[]) {
         return target.every(v => arr.includes(v))
     }
 

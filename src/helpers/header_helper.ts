@@ -7,10 +7,10 @@ const DEFAULT_CONDITION_HEADERS: string[] = ['condition'];
 const DEFAULT_SET_HEADERS: string[] = ['set', 'expansion'];
 const DEFAULT_SET_CODE_HEADERS: string[] = ['set_code', 'code',  'set code'];
 export const DEFAULT_HEADERS: string[] = ['name', 'expansion', 'set_code', 'date_acquired', 'price_acquired', 'condition', 'foil', 'language', 'quantity'];
-const DEFAULT_LANGS: string[] = ['EN', 'GR', 'FR', 'SP', 'CS', 'IT', 'JP', 'CT', 'KR', 'RU', 'English', 'French', 'Spanish', 'Chinese - Simplified', 'Italian', 'Japanese', 'Chinese - Traditional', 'Korean', 'Russian'];
+// const DEFAULT_LANGS: string[] = ['EN', 'GR', 'FR', 'SP', 'CS', 'IT', 'JP', 'CT', 'KR', 'RU', 'English', 'French', 'Spanish', 'Chinese - Simplified', 'Italian', 'Japanese', 'Chinese - Traditional', 'Korean', 'Russian'];
 const DEFAULT_QUANTITY_HEADERS: string[] = ['reg qty', 'quantity', 'Quantity'];
 const DEFAULT_FOIL_QUANTITY_HEADERS: string[] = ['foil qty'];
-const DEFAULT_CONDITIONS: string[] = ['NM', 'MINT', 'EX', 'HP', 'LP', 'DMG'];
+// const DEFAULT_CONDITIONS: string[] = ['NM', 'MINT', 'EX', 'HP', 'LP', 'DMG'];
 
 let myHeaderHelper: { [index: string]: string[] } = {};
 myHeaderHelper['name'] = DEFAULT_NAME_HEADERS;
