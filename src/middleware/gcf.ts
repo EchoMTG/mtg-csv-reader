@@ -22,7 +22,11 @@ let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
             next();
         })
     } else {
-        return next();
+        if ( req.header('content-type') ) {
+            return next();
+        } else {
+            return res.status(400).send("Unknown upload type. No mimetype on request");
+        }
     }
 };
 
