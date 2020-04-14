@@ -22,7 +22,7 @@ let buildFileUploades =  (req: Request, res: Response, next: NextFunction) => {
             next();
         })
     } else {
-        if ( req.header('content-type') ) {
+        if ( req.header('content-type') || req.method === 'GET' ) {
             return next();
         } else {
             return res.status(400).send("Unknown upload type. No mimetype on request");

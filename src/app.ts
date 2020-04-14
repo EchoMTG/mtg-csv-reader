@@ -7,6 +7,7 @@ import {UploadedFile} from "express-fileupload";
 import * as cors from "cors";
 import {ProcessorMux, UploadHandler} from "./upload_processors/processor_mux";
 import {generateFile} from "./helpers/util";
+import {headerHelper} from "./helpers/header_helper";
 
 
 export class App {
@@ -45,6 +46,18 @@ export class App {
               <input type="submit">
             </form>
         `).status(200);
+        });
+
+        this._app.get('/supported_exports', (req: express.Request, res: express.Response) => {
+            res.status(200).send([
+                'TCGPlayer App',
+                'Delver Lens',
+                'Echo MTG'
+            ])
+        });
+
+        this._app.get('/supported_headers', (req: express.Request, res: express.Response) => {
+           res.status(200).send(headerHelper.defaultHeaders)
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
