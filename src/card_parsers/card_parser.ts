@@ -1,39 +1,11 @@
-import {AppConfig, HeaderHelper, headerHelper} from "../config/parser_config";
+import {AppConfig} from "../config/parser_config";
 import {UploadProcessorResult} from "../upload_processors/csv_processor";
-
-export interface ParsedCard {
-    name: string,
-    expansion: string,
-    acquire_date: string,
-    acquire_price: string,
-    set_code: string,
-    set?: string,
-    condition: string,
-    language: string,
-    foil: boolean,
-    errors?: string[],
-    quantity: string,
-    extra_details: {
-        [index: string]: string
-    }
-}
-
-export interface parsingStatus {
-    [index: string]: number | undefined;
-
-    expansion?: number | undefined;
-    set_code: number;
-    date_acquired?: number | undefined;
-    price_acquired?: number | undefined;
-    foil?: number | undefined;
-    condition?: number | undefined;
-    language?: number | undefined;
-    quantity?: number | undefined;
-    name: number;
-}
+import {headerHelper, HeaderHelper} from "../helpers/header_helper";
+import {CardParser, ParsedCard, parsingStatus} from "./index";
+import {coerceLanguage, validateCondition, validateLanguage} from "../helpers/value_coercer";
 
 
-export class CardParser {
+export class BestEffortCardParser implements CardParser{
     headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
     cards: ParsedCard[] = [];
     parsingErrors: string[] = [];
@@ -42,6 +14,7 @@ export class CardParser {
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
+        console.log(`Createing a BestEffortCardParser using ${appConfig}`);
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -55,7 +28,7 @@ export class CardParser {
     parseSingleCard(details: string[], other_headers?: string[]): void {
         const parsedCard: ParsedCard = {
             foil: false,
-            language: 'EN',
+            language: 'en',
             acquire_date: '',
             acquire_price: '',
             expansion: '',
@@ -132,10 +105,10 @@ export class CardParser {
             }
         }
 
-        if (this.headers.condition) {
-            parsedCard.extra_details['original_condition'] = details[this.headers.condition];
-            details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
-        }
+        // if (this.headers.condition) {
+        //     parsedCard.extra_details['original_condition'] = details[this.headers.condition];
+        //     details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
+        // }
 
 
         parsedCard['foil'] = this.booleanCheck(this.determineFieldValue(this.headers.foil, details, 'false'));
@@ -330,7 +303,7 @@ export class CardParser {
      * - If the card has a valid set, but the card name doesn't exist in that set, delete it
      * @param cb
      */
-    parseCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
+    validateParsedCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
             if (!card.set_code) {
@@ -343,6 +316,7 @@ export class CardParser {
             if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    this.coerceOutputValues(card);
                     return;
                 } else {
                     cardsToDelete.push(card);
@@ -355,6 +329,27 @@ export class CardParser {
         cardsToDelete.map(this.deleteCard.bind(this));
 
         cb(undefined, this.parseResults());
+    }
+
+    /**
+     * Bundle function to run all the planned output coercion
+     * @param card
+     */
+    coerceOutputValues(card: ParsedCard): void {
+        // Check for value coercions
+        if ( card.language !== 'en' ) {
+            // They passed in a value for language
+            if ( card.language.length > 2 ) {
+                // They passed in a long name
+                card.language = coerceLanguage(card.language);
+            } else {
+                card.language = validateLanguage(card.language);
+            }
+        }
+
+        if ( card.condition !== '' ) {
+            card.condition = validateCondition(card.condition);
+        }
     }
 
     /**

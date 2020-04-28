@@ -2,27 +2,65 @@ import * as csvParse from "csv-parse"
 import * as fileUpload from "express-fileupload";
 import * as fs from "fs";
 import {AppConfig} from "../config/parser_config"
-import {CardParser, ParsedCard, parsingStatus} from "../helpers/card_parser";
+import {BestEffortCardParser} from "../card_parsers/card_parser";
+import {CardParserDecision, ParsedCard, parsingStatus, knownHeaderFormats} from "../card_parsers";
 
 export type UploadProcessorResult = {
-    errors: {name: string, set_code:string}[] ;
+    errors: { name: string, set_code: string }[];
     cards: ParsedCard[];
     headers: parsingStatus
     parsingErrors: string[]
 }
 
 export interface UploadProcessor {
-    isSupportedMimeType (type: string): boolean;
+    isSupportedMimeType(type: string): boolean;
+
     processUpload(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: UploadProcessorResult) => void): void
 }
 
 export class BasicCsvProcessor implements UploadProcessor {
-    cardParser: CardParser;
+    parsingConfig: AppConfig;
     supportedMimeTypes: string[];
+    knownUploadHeaders: knownHeaderFormats = {};
 
     constructor(config: AppConfig) {
-        this.cardParser = new CardParser(config);
+        this.parsingConfig = config;
         this.supportedMimeTypes = ['text/csv'];
+        this.knownUploadHeaders = {
+            'tcg_player_app_ios': {
+                headers: ['quantity', 'name', 'set code', 'printing', 'language'],
+                //TODO - Replace with specific parser
+                parser: new BestEffortCardParser(this.parsingConfig)
+            },
+            'delver_lens': {
+                headers: ['reg qty', 'foil qty', 'name', 'set', 'acquired', 'Language'],
+                //TODO - Replace with specific parser
+                parser: new BestEffortCardParser(this.parsingConfig)
+            }
+        };
+    }
+
+    /**
+     * use the list of known CSV uploads to determine how best to parse the cards.
+     * @param headers
+     * @constructor
+     */
+    DetermineCardParser(headers: string[]): Promise<CardParserDecision> {
+        return new Promise<CardParserDecision>((resolve, reject) => {
+            const sources: string[] = Object.keys(this.knownUploadHeaders);
+            for (const source of sources) {
+                if (this.headerCheck(headers, this.knownUploadHeaders[source].headers)) {
+                    console.log("Matched a known upload format: " + source);
+                    return resolve({
+                        headers: headers, cardParser: this.knownUploadHeaders[source].parser
+                    })
+                }
+            }
+            console.log("Failing back to best effort card parsing");
+            return resolve({
+                headers: headers, cardParser: new BestEffortCardParser(this.parsingConfig)
+            })
+        });
     }
 
     /**
@@ -31,6 +69,10 @@ export class BasicCsvProcessor implements UploadProcessor {
      */
     isSupportedMimeType(type: string) {
         return this.supportedMimeTypes.includes(type);
+    }
+
+    headerCheck(arr: string[], target: string[]) {
+        return target.every(v => arr.includes(v))
     }
 
     /**
@@ -42,7 +84,12 @@ export class BasicCsvProcessor implements UploadProcessor {
         const tmpfilename = new Date().getTime() + '-file.csv';
         const tmpfilepath = '/tmp/' + tmpfilename;
 
-        const parsingResult: UploadProcessorResult = {errors:[], cards:[], parsingErrors:[], headers: {name:-1, set_code:-1}};
+        const parsingResult: UploadProcessorResult = {
+            errors: [],
+            cards: [],
+            parsingErrors: [],
+            headers: {name: -1, set_code: -1}
+        };
 
         file.mv(tmpfilepath, (err) => {
             if (err) {
@@ -75,22 +122,21 @@ export class BasicCsvProcessor implements UploadProcessor {
                 })
                 .on('end', () => {
                     if (results.length > 0) {
-                        // Parse the results into MTG Card Objects
-                        this.cardParser.parseRawRows(results);
-
-                        if ( parsingResult.parsingErrors.length > 0 ) {
-                            return cb(new Error(""), parsingResult);
-                        }
-
-                        //Validate those objects against the ECHO API
-                        this.cardParser.parseCards(cb);
+                        const headers = ([] as string[]).concat(...results.splice(0, 1)).map((v) => v.toLowerCase());
+                        this.DetermineCardParser(headers).then((meta: CardParserDecision) => {
+                            results.unshift(headers);
+                            meta.cardParser.parseRawRows(results);
+                            if (parsingResult.parsingErrors.length > 0) {
+                                return cb(new Error(""), parsingResult);
+                            }
+                            meta.cardParser.validateParsedCards(cb);
+                        });
                     } else {
                         cb(undefined, parsingResult);
                     }
                 });
         });
     }
-
 }
 
 
