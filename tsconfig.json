@@ -12,6 +12,7 @@
   },
   "exclude": [
     "./node_modules",
-    "./type_overrides"
+    "./type_overrides",
+    "./tests"
   ]
 }

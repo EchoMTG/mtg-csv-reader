@@ -8,6 +8,7 @@ import * as cors from "cors";
 import {ProcessorMux, UploadHandler} from "./upload_processors/processor_mux";
 import {generateFile} from "./helpers/util";
 import {headerHelper} from "./helpers/header_helper";
+import {VERSION} from "./version";
 
 
 export class App {
@@ -46,6 +47,10 @@ export class App {
               <input type="submit">
             </form>
         `).status(200);
+        });
+
+        this._app.get('/version', (req: express.Request, res: express.Response) => {
+           res.status(200).send({version: VERSION});
         });
 
         this._app.get('/supported_exports', (req: express.Request, res: express.Response) => {
