@@ -103,7 +103,7 @@ export class BasicCsvProcessor implements UploadProcessor {
             const results: string[][] = [];
 
             fs.createReadStream(tmpfilepath)
-                .pipe(csvParse())
+                .pipe(csvParse({skip_empty_lines:true}))
                 .on('error', (innerErr: Error) => {
                     // if teh data is an invalid CSV, this will throw an error here
                     // this.errors.push(innerErr.message);
