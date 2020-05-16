@@ -57,7 +57,8 @@ export class App {
             res.status(200).send([
                 'TCGPlayer App',
                 'Delver Lens',
-                'Echo MTG'
+                'Echo MTG',
+                'Deckbox'
             ])
         });
 
