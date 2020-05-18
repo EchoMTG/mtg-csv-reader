@@ -147,7 +147,7 @@ export class BestEffortCardParser implements CardParser{
      * @param value
      */
     booleanCheck(value: string): boolean {
-        return ['true', 'True', 'yes', 'Yes', 'Y', 'y'].indexOf(value) > -1;
+        return ['true', 'yes', 'y', 'foil'].indexOf(value.toLowerCase()) > -1;
     }
 
     /**
