@@ -1,39 +1,11 @@
-import {AppConfig, HeaderHelper, headerHelper} from "../config/parser_config";
+import {AppConfig} from "../config/parser_config";
 import {UploadProcessorResult} from "../upload_processors/csv_processor";
-
-export interface ParsedCard {
-    name: string,
-    expansion: string,
-    acquire_date: string,
-    acquire_price: string,
-    set_code: string,
-    set?: string,
-    condition: string,
-    language: string,
-    foil: boolean,
-    errors?: string[],
-    quantity: string,
-    extra_details: {
-        [index: string]: string
-    }
-}
-
-export interface parsingStatus {
-    [index: string]: number | undefined;
-
-    expansion?: number | undefined;
-    set_code: number;
-    acquire_date?: number | undefined;
-    price_acquired?: number | undefined;
-    foil?: number | undefined;
-    condition?: number | undefined;
-    language?: number | undefined;
-    quantity?: number | undefined;
-    name: number;
-}
+import {headerHelper, HeaderHelper} from "../helpers/header_helper";
+import {CardParser, ParsedCard, parsingStatus} from "./index";
+import {coerceLanguage, validateCondition, validateLanguage} from "../helpers/value_coercer";
 
 
-export class CardParser {
+export class BestEffortCardParser implements CardParser{
     headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
     cards: ParsedCard[] = [];
     parsingErrors: string[] = [];
@@ -42,6 +14,7 @@ export class CardParser {
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
+        console.log(`Createing a BestEffortCardParser using ${appConfig}`);
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -55,7 +28,7 @@ export class CardParser {
     parseSingleCard(details: string[], other_headers?: string[]): void {
         const parsedCard: ParsedCard = {
             foil: false,
-            language: 'EN',
+            language: 'en',
             acquire_date: '',
             acquire_price: '',
             expansion: '',
@@ -80,11 +53,9 @@ export class CardParser {
                     } else {
                         parsedCard.extra_details[other_headers[index]] = details[index];
                     }
-                }
+                }0
             });
         }
-
-
 
 
         // Set the requried fields
@@ -108,15 +79,15 @@ export class CardParser {
         }
 
         if (parsedCard['expansion'] && !parsedCard['set_code']) {
-            let setCode: string|undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
-            if ( setCode ) {
+            let setCode: string | undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
+            if (setCode) {
                 parsedCard['set_code'] = setCode;
             }
         }
 
         // This is a workaround to allow Set to match to expansion
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
-            let unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
+            const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
             console.log(`Performing mysterSetWorkaround: ${unknownValue}`);
             if (unknownValue) {
                 // They passed a full expac name
@@ -124,7 +95,7 @@ export class CardParser {
                 parsedCard['expansion'] = details[this.headers['set']];
             } else {
                 // They passed a set code as Set OR they passed an unknown set name
-                if ( this.appConfig.setCodes.includes(details[this.headers['set']]) ) {
+                if (this.appConfig.setCodes.includes(details[this.headers['set']])) {
                     parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
                     parsedCard['set_code'] = details[this.headers['set']];
                 } else {
@@ -133,21 +104,50 @@ export class CardParser {
                 }
             }
         }
-        console.log(`Derived quantity value: ${this.determineFieldValue(this.headers.quantity, details, '1') }`);
 
-        parsedCard['foil'] = this.booleanCheck( this.determineFieldValue(this.headers.foil, details, 'false') );
+        // if (this.headers.condition) {
+        //     parsedCard.extra_details['original_condition'] = details[this.headers.condition];
+        //     details[this.headers.condition] = this.coerceCondition(details[this.headers.condition])
+        // }
+
+
+        parsedCard['foil'] = this.booleanCheck(this.determineFieldValue(this.headers.foil, details, 'false'));
         parsedCard['quantity'] = this.determineFieldValue(this.headers.quantity, details, '1');
         parsedCard['condition'] = this.determineFieldValue(this.headers.condition, details, '');
         parsedCard['language'] = this.determineFieldValue(this.headers.language, details, '');
-        parsedCard['acquire_date'] = this.determineFieldValue(this.headers.acquire_date, details, '');
+        parsedCard['acquire_date'] = this.determineFieldValue(this.headers.date_acquired, details, '');
         parsedCard['acquire_price'] = this.determineFieldValue(this.headers.price_acquired, details, '');
 
-        console.log(`Parsed Card: ${JSON.stringify(parsedCard)}`);
         this.cards.push(parsedCard);
     }
 
+    /**
+     * Convert a wordy condition into a code
+     * @param originalCondition
+     */
+    coerceCondition(originalCondition: string): string {
+        let newCondition: string = originalCondition;
+        if (originalCondition.split(' ').length > 1) {
+            newCondition = '';
+            originalCondition.split(' ').forEach((word: string) => {
+                newCondition += word[0].toLowerCase();
+            });
+            return newCondition;
+        } else {
+            if (originalCondition.length > 2) {
+                return originalCondition[0].toLowerCase();
+            } else {
+                return originalCondition;
+            }
+        }
+    }
+
+    /**
+     * Return a boolean from a common list of things that might mean true
+     * @param value
+     */
     booleanCheck(value: string): boolean {
-        return ['true', 'True', 'yes', 'Yes', 'Y', 'y'].indexOf(value) > -1;
+        return ['true', 'yes', 'y', 'foil'].indexOf(value.toLowerCase()) > -1;
     }
 
     /**
@@ -157,7 +157,7 @@ export class CardParser {
      * @param defaultValue
      */
     determineFieldValue(test: number | undefined, values: string[], defaultValue: string): string {
-        if ( typeof(test) === 'undefined' ) {
+        if (typeof (test) === 'undefined') {
             return defaultValue;
         } else {
             return values[test];
@@ -174,11 +174,10 @@ export class CardParser {
             const headerRow: string[] | undefined = inputRows.shift();
             if (Array.isArray(headerRow)) {
                 const checkRow: string[] = headerRow.map(val => val.toLowerCase());
-                let fixedHeader: string[] = this.coerceHeaders(checkRow.join(','));
-                console.log(`Final Coerced HEaders: ${fixedHeader}`);
-                this.validateHeaders(fixedHeader);
+                const fixedHeaders: string[] = this.coerceHeaders(checkRow.join(','));
+                this.validateHeaders(fixedHeaders);
                 if (this.parsingErrors.length <= 0) {
-                    this.parseRowsWithHeader(fixedHeader, inputRows);
+                    this.parseRowsWithHeader(fixedHeaders, inputRows);
                 }
             }
         }
@@ -191,8 +190,13 @@ export class CardParser {
     validateHeaders(headers: string[]) {
         ['name', 'set'].map((val: string) => {
             if (headers.indexOf(val) === -1) {
-                // We need to check for near matches
-                this.parsingErrors.push(`Missing Required Header: ${val}`);
+                // Note:
+                // This bit of code is here to support passing ONLY set_code, as thats how TCGPlayer does it
+                if (val === 'set' && headers.indexOf('set_code') !== -1) {
+                    this.headers[val] = headers.indexOf(val);
+                } else {
+                    this.parsingErrors.push(`Missing Required Header: ${val}`);
+                }
             } else {
                 this.headers[val] = headers.indexOf(val);
             }
@@ -207,42 +211,60 @@ export class CardParser {
      */
     parseRowsWithHeader(headerRow: string[], data: string[][]): void {
         headerRow.forEach((header: string, index: number) => {
-            if (this.appConfig.headers.indexOf(header.toLowerCase()) != -1) {
+            // Create the headers object by creating an object of key(header name) = value (header position )
+            if (this.appConfig.headers.indexOf(header.toLowerCase()) !== -1) {
                 this.headers[header.toLowerCase()] = index;
             }
         });
 
         // We set these from derived values so we always have them no matter in the input format
+        // Note:
+        // This block of code says
+        // - If we don't have an explicit quantity header
+        // - Add a quanity header to the end of both the headerRow and the headersObjects by fetching the maxLength
         let quantityIndexHeader: number = -1;
-        if ( typeof(this.headers.quantity) === 'undefined' ) {
+        let boolDefaultQuantity: boolean = false;
+        if (typeof (this.headers.quantity) === 'undefined') {
             quantityIndexHeader = headerRow.length;
             this.headers.quantity = quantityIndexHeader;
             headerRow.push('quantity');
+            boolDefaultQuantity = true;
         } else {
             quantityIndexHeader = this.headers.quantity;
         }
 
+        // See above notes for this block, but replace quantity with foil
         let foilIndexHeader: number = -1;
-        if ( typeof(this.headers.foil) === 'undefined' ) {
+        if (typeof (this.headers.foil) === 'undefined') {
+            // We were unable to find a Foil header
             foilIndexHeader = headerRow.length;
             this.headers.foil = foilIndexHeader;
             headerRow.push('foil');
         }
 
         data.forEach((row: string[]) => {
-            if ( row != [] ) {
+            if (row !== []) {
                 // Extract this logic back into the delver lens at some point
-                let foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
+                if ( boolDefaultQuantity ) {
+                    row.push('1');
+                }
+                const foilQuantity: number = Number(row[headerRow.indexOf('foil_quantity')]);
                 let isFoil: boolean = false;
-                if ( foilQuantity > 0 ) {
+                if (foilQuantity > 0) {
                     // There might be normal cards and foil cards
-                    if ( Number(row[quantityIndexHeader]) > 0 ) {
-                        let newCard: string[] = [...row];
+                    if (Number(row[quantityIndexHeader]) > 0) {
+                        const newCard: string[] = [...row];
                         newCard.push(String(isFoil));
                         this.parseSingleCard(newCard, headerRow);
                     }
                     isFoil = true;
                     row[quantityIndexHeader] = foilQuantity.toString();
+                } else {
+                    if (headerRow.indexOf('printing') > -1) {
+                        // This is applying another TCGPlayer adjustment
+                        const foilHeaderIndex = headerRow.indexOf('printing');
+                        isFoil = this.parseFoilFromPrinting(row[foilHeaderIndex]);
+                    }
                 }
                 row.push(String(isFoil));
 
@@ -275,10 +297,14 @@ export class CardParser {
 
     /**
      * Validate echo API dataset
+     * - For each card
+     * - If the card has no set_code, delete
+     * - If the card has a set code, but that set doesn't exist in the echo cache, delete
+     * - If the card has a valid set, but the card name doesn't exist in that set, delete it
      * @param cb
      */
-    parseCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
-        let cardsToDelete: ParsedCard[] = [];
+    validateParsedCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
+        const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
             if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
@@ -290,10 +316,14 @@ export class CardParser {
             if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    this.coerceOutputValues(card);
                     return;
                 } else {
                     cardsToDelete.push(card);
                 }
+            } else {
+                // The setcode is invalid
+                cardsToDelete.push(card);
             }
         });
         cardsToDelete.map(this.deleteCard.bind(this));
@@ -302,14 +332,35 @@ export class CardParser {
     }
 
     /**
+     * Bundle function to run all the planned output coercion
+     * @param card
+     */
+    coerceOutputValues(card: ParsedCard): void {
+        // Check for value coercions
+        if ( card.language !== 'en' ) {
+            // They passed in a value for language
+            if ( card.language.length > 2 ) {
+                // They passed in a long name
+                card.language = coerceLanguage(card.language);
+            } else {
+                card.language = validateLanguage(card.language);
+            }
+        }
+
+        if ( card.condition !== '' ) {
+            card.condition = validateCondition(card.condition);
+        }
+    }
+
+    /**
      * Convert headers from things to close to the allowed, to the allowed
      * @param headerRow
      */
     coerceHeaders(headerRow: string | undefined): string[] {
-        let headers: string[] = [];
+        const headers: string[] = [];
         if (headerRow) {
             headerRow.split(',').forEach((header: string) => {
-                let newHeader: string | undefined = this.headerHelper.isValidHeader(header);
+                const newHeader: string | undefined = this.headerHelper.isValidHeader(header);
                 if (newHeader) {
                     headers.push(newHeader);
                 } else {
@@ -318,6 +369,11 @@ export class CardParser {
             });
         }
         return headers
+    }
+
+    parseFoilFromPrinting(printing: string) {
+        return printing.toLowerCase() === 'foil';
+
     }
 
 }
