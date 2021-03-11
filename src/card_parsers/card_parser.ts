@@ -88,7 +88,7 @@ export class BestEffortCardParser implements CardParser{
         // This is a workaround to allow Set to match to expansion
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
             const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
-            console.log(`Performing mysterSetWorkaround: ${unknownValue}`);
+            console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
             if (unknownValue) {
                 // They passed a full expac name
                 parsedCard['set_code'] = unknownValue;
