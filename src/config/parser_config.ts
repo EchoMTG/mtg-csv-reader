@@ -60,6 +60,8 @@ export class AppConfig {
         this.setCodes = Object.keys(setData.sets);
         this.setNames = Object.values(setData.sets);
         this.cardCache = await this.getCardCache();
+        this.tcgidCache = await this.getTCGIDCache();
+        this.collectoridCache = await this.getCollectorIDCache();
     }
 
     /**
@@ -76,6 +78,35 @@ export class AppConfig {
             });
         })
     }
+
+    /**
+     * Gather the tcgid->echoid data from Echo so it doesn't need to be store locally
+     *
+     */
+    private async getTCGIDCache(): Promise<{ [index: string]: { [index: string]: string } }> {
+        return new Promise((resolve, reject) => {
+            request({uri: 'https://assets.echomtg.com/data/lookuptcgid.json'}).then((body) => {
+                const data:  { [index: string]: { [index: string]: string } } = JSON.parse(body.toString().toLowerCase());
+                resolve(data);
+            }).catch((err) => {
+                reject(err);
+            });
+        })
+    }
+        /**
+     * Gather the setcode->setnumber->echoid data from Echo so it doesn't need to be store locally
+     *
+     */
+        private async getCollectorIDCache(): Promise<{ [index: string]: { [index: string]: string } }> {
+            return new Promise((resolve, reject) => {
+                request({uri: 'https://assets.echomtg.com/data/lookupcollectorid.json'}).then((body) => {
+                    const data:  { [index: string]: { [index: string]: string } } = JSON.parse(body.toString().toLowerCase());
+                    resolve(data);
+                }).catch((err) => {
+                    reject(err);
+                });
+            })
+        }
 
     /**
      * Gather the [set -> Card List[ data from Echo so it doesn't need to be store locally
