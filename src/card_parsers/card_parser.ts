@@ -14,7 +14,7 @@ export class BestEffortCardParser implements CardParser{
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
-        console.log(`Createing a BestEffortCardParser using ${appConfig}`);
+        console.log(`Running BestEffortCardParser using`, appConfig});
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -50,10 +50,10 @@ export class BestEffortCardParser implements CardParser{
                     let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
                         this.headers[matchedHeader] = index;
-                    } else {
+                    } else {                                                                                                                                                      
                         parsedCard.extra_details[other_headers[index]] = details[index];
                     }
-                }0
+                }
             });
         }
 
@@ -61,6 +61,10 @@ export class BestEffortCardParser implements CardParser{
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
         parsedCard['set_code'] = details[this.headers.set_code];
+        console.log('parsed card object',parsedCard);
+        
+        // Product ID, tcgplayer_id, tcgid, 
+        // set number, collector id, card number
 
         if (this.headers.expansion) {
             // We may need move the expansion value to set_code
@@ -89,6 +93,8 @@ export class BestEffortCardParser implements CardParser{
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
             const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
             console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
+
+            
             if (unknownValue) {
                 // They passed a full expac name
                 parsedCard['set_code'] = unknownValue;
