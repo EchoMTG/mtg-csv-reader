@@ -14,7 +14,7 @@ export class BestEffortCardParser implements CardParser{
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
-        console.log(`Running BestEffortCardParser using`, appConfig});
+        //console.log(`Running BestEffortCardParser using`, appConfig);
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -40,12 +40,14 @@ export class BestEffortCardParser implements CardParser{
         };
 
         console.log(`Parsing card: ${details}`);
+        console.log(`other headers: ${other_headers}`);
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
+                    // check for product id, tcgplayer id, tcgid
                     // Check if maybe its a weird spelling of another field
                     let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
@@ -56,7 +58,7 @@ export class BestEffortCardParser implements CardParser{
                 }
             });
         }
-
+        console.log('headers',this.headers)
 
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
