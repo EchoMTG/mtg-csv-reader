@@ -99,7 +99,7 @@ export class AppConfig {
      */
         private async getCollectorIDCache(): Promise<{ [index: string]: { [index: string]: string } }> {
             return new Promise((resolve, reject) => {
-                request({uri: 'https://assets.echomtg.com/data/lookupcollectorid.json'}).then((body) => {
+                request({uri: 'https://assets.echomtg.com/data/lookuptcgid.json'}).then((body) => {
                     const data:  { [index: string]: { [index: string]: string } } = JSON.parse(body.toString().toLowerCase());
                     resolve(data);
                 }).catch((err) => {

@@ -58,7 +58,8 @@ export class BasicCsvProcessor implements UploadProcessor {
             }
             console.log("Failing back to best effort card parsing");
             return resolve({
-                headers: headers, cardParser: new BestEffortCardParser(this.parsingConfig)
+                headers: headers, 
+                cardParser: new BestEffortCardParser(this.parsingConfig)
             })
         });
     }
