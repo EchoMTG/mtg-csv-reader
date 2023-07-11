@@ -35,6 +35,8 @@ export class BestEffortCardParser implements CardParser{
             set_code: '',
             condition: '',
             name: '',
+            tcgid: null,
+            collectors_number: '',
             quantity: '',
             extra_details: {}
         };
@@ -49,6 +51,7 @@ export class BestEffortCardParser implements CardParser{
                 if (columnsAlreadySet.indexOf(index) === -1) {
                     // check for product id, tcgplayer id, tcgid
                     // Check if maybe its a weird spelling of another field
+                    console.log('checking header',header)
                     let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
                         this.headers[matchedHeader] = index;
@@ -59,11 +62,17 @@ export class BestEffortCardParser implements CardParser{
             });
         }
         console.log('headers',this.headers)
-
+        console.log('parsed card object',parsedCard);
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
         parsedCard['set_code'] = details[this.headers.set_code];
-        console.log('parsed card object',parsedCard);
+        if(this.headers.tcgid){
+            parsedCard['tcgid'] = details[this.headers.tcgid];
+        }
+        if(this.headers.collectors_number){
+            parsedCard['collectors_number'] = details[this.headers.collectors_number];
+        }
+        
         
         // Product ID, tcgplayer_id, tcgid, 
         // set number, collector id, card number

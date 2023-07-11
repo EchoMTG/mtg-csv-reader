@@ -15,6 +15,8 @@ export interface ParsedCard {
     condition: string,
     language: string,
     foil: boolean,
+    tcgid: int,
+    collectors_number: string,
     errors?: string[],
     quantity: string,
     extra_details: {
@@ -30,6 +32,7 @@ export interface parsingStatus {
     date_acquired?: number | undefined;
     price_acquired?: number | undefined;
     foil?: number | undefined;
+    tcgid?: number | undefined;
     condition?: number | undefined;
     language?: number | undefined;
     quantity?: number | undefined;
