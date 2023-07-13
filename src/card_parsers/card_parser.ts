@@ -323,6 +323,17 @@ export class BestEffortCardParser implements CardParser{
     validateParsedCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
+            console.log('card',card)
+
+            // cehck for tcgid
+            if(card.tcgid){
+                console.log('looking up tcgid')
+                card.extra_details['echo_id'] = this.appConfig.tcgidCache[card.tcgid];
+                console.log('card',card)
+                this.coerceOutputValues(card);
+                return;
+            }
+
             if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
                 console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Missing Set Code`);
