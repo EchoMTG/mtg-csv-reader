@@ -15,7 +15,7 @@ export interface ParsedCard {
     condition: string,
     language: string,
     foil: boolean,
-    tcgid: int,
+    tcgid: number,
     collectors_number: string,
     errors?: string[],
     quantity: string,

@@ -35,14 +35,14 @@ export class BestEffortCardParser implements CardParser{
             set_code: '',
             condition: '',
             name: '',
-            tcgid: null,
+            tcgid: 0,
             collectors_number: '',
             quantity: '',
             extra_details: {}
         };
 
-        console.log(`Parsing card: ${details}`);
-        console.log(`other headers: ${other_headers}`);
+        // console.log(`Parsing card: ${details}`);
+        // console.log(`other headers: ${other_headers}`);
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
@@ -51,7 +51,7 @@ export class BestEffortCardParser implements CardParser{
                 if (columnsAlreadySet.indexOf(index) === -1) {
                     // check for product id, tcgplayer id, tcgid
                     // Check if maybe its a weird spelling of another field
-                    console.log('checking header',header)
+                    // console.log('checking header',header)
                     let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
                         this.headers[matchedHeader] = index;
@@ -61,13 +61,13 @@ export class BestEffortCardParser implements CardParser{
                 }
             });
         }
-        console.log('headers',this.headers)
-        console.log('parsed card object',parsedCard);
+        // console.log('headers',this.headers)
+        // console.log('parsed card object',parsedCard);
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
         parsedCard['set_code'] = details[this.headers.set_code];
         if(this.headers.tcgid){
-            parsedCard['tcgid'] = details[this.headers.tcgid];
+            parsedCard['tcgid'] = parseInt(details[this.headers.tcgid]);
         }
         if(this.headers.collectors_number){
             parsedCard['collectors_number'] = details[this.headers.collectors_number];
@@ -103,7 +103,7 @@ export class BestEffortCardParser implements CardParser{
         // This is a workaround to allow Set to match to expansion
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
             const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
-            console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
+            // console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
 
             
             if (unknownValue) {
@@ -192,7 +192,7 @@ export class BestEffortCardParser implements CardParser{
             if (Array.isArray(headerRow)) {
                 const checkRow: string[] = headerRow.map(val => val.toLowerCase());
                 const fixedHeaders: string[] = this.coerceHeaders(checkRow.join(','));
-                this.validateHeaders(fixedHeaders);
+                //this.validateHeaders(fixedHeaders);
                 if (this.parsingErrors.length <= 0) {
                     this.parseRowsWithHeader(fixedHeaders, inputRows);
                 }
@@ -323,36 +323,47 @@ export class BestEffortCardParser implements CardParser{
     validateParsedCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
-            console.log('card',card)
+            
 
-            // cehck for tcgid
+            // check for tcgid, this doesnt require set code
             if(card.tcgid){
-                console.log('looking up tcgid')
+                //console.log('looking up tcgid')
                 card.extra_details['echo_id'] = this.appConfig.tcgidCache[card.tcgid];
-                console.log('card',card)
+                //console.log('card',card)
                 this.coerceOutputValues(card);
                 return;
             }
 
+            // from here, if there is no set code, neither set code nad collector number or set code and name will work
             if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
                 console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Missing Set Code`);
                 cardsToDelete.push(card);
                 return;
             }
+
             // Check if the card name and set exist in the cached data
-            if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
+            if (card.collectors_number) {
+                //console.log('looking up collectors number',card.set_code.toLowerCase(),card.collectors_number)
+                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.collectors_number]) {
+                    card.extra_details['echo_id'] = this.appConfig.collectoridCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    this.coerceOutputValues(card);
+                    return;
+                }
+            }
+            
+            // Check if the card name and set exist in the cached data
+            if (card.name) {
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
                     this.coerceOutputValues(card);
                     return;
-                } else {
-                    cardsToDelete.push(card);
                 }
-            } else {
-                // The setcode is invalid
-                cardsToDelete.push(card);
             }
+                
+            // no return The setcode is invalid
+            cardsToDelete.push(card);
+            
         });
         cardsToDelete.map(this.deleteCard.bind(this));
 
