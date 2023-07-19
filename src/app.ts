@@ -41,7 +41,7 @@ export class App {
 
     setTemplateRoutes(): void {
         this._app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            res.send(`
+            res.send(`<style>body { background: black; }</style>
             <form action="upload" method="post" enctype="multipart/form-data">
               <input name="csvFile" type="file" />
               <input type="submit">

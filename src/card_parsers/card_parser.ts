@@ -14,7 +14,7 @@ export class BestEffortCardParser implements CardParser{
     readonly appConfig: AppConfig;
 
     constructor(appConfig: AppConfig) {
-        console.log(`Createing a BestEffortCardParser using ${appConfig}`);
+        //console.log(`Running BestEffortCardParser using`, appConfig);
         this.appConfig = appConfig;
         this.headers = {name: -1, set_code: -1};
         this.headerHelper = headerHelper;
@@ -35,32 +35,47 @@ export class BestEffortCardParser implements CardParser{
             set_code: '',
             condition: '',
             name: '',
+            tcgid: 0,
+            collectors_number: '',
             quantity: '',
             extra_details: {}
         };
 
-        console.log(`Parsing card: ${details}`);
+        // console.log(`Parsing card: ${details}`);
+        // console.log(`other headers: ${other_headers}`);
 
         //TODO - Add some functions to include extra passed in columns
         if (this.appConfig.includeUnknownFields && other_headers) {
             const columnsAlreadySet = Object.values(this.headers);
             other_headers.forEach((header: string, index: number) => {
                 if (columnsAlreadySet.indexOf(index) === -1) {
+                    // check for product id, tcgplayer id, tcgid
                     // Check if maybe its a weird spelling of another field
+                    // console.log('checking header',header)
                     let matchedHeader: string | undefined = this.headerHelper.isValidHeader(header);
                     if (matchedHeader) {
                         this.headers[matchedHeader] = index;
-                    } else {
+                    } else {                                                                                                                                                      
                         parsedCard.extra_details[other_headers[index]] = details[index];
                     }
-                }0
+                }
             });
         }
-
-
+        // console.log('headers',this.headers)
+        // console.log('parsed card object',parsedCard);
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
         parsedCard['set_code'] = details[this.headers.set_code];
+        if(this.headers.tcgid){
+            parsedCard['tcgid'] = parseInt(details[this.headers.tcgid]);
+        }
+        if(this.headers.collectors_number){
+            parsedCard['collectors_number'] = details[this.headers.collectors_number];
+        }
+        
+        
+        // Product ID, tcgplayer_id, tcgid, 
+        // set number, collector id, card number
 
         if (this.headers.expansion) {
             // We may need move the expansion value to set_code
@@ -88,7 +103,9 @@ export class BestEffortCardParser implements CardParser{
         // This is a workaround to allow Set to match to expansion
         if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
             const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
-            console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
+            // console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
+
+            
             if (unknownValue) {
                 // They passed a full expac name
                 parsedCard['set_code'] = unknownValue;
@@ -188,7 +205,8 @@ export class BestEffortCardParser implements CardParser{
      * @param headers
      */
     validateHeaders(headers: string[]) {
-        ['name', 'set'].map((val: string) => {
+        // 'name', 'set', 'tcgid'
+        [].map((val: string) => {
             if (headers.indexOf(val) === -1) {
                 // Note:
                 // This bit of code is here to support passing ONLY set_code, as thats how TCGPlayer does it
@@ -306,25 +324,47 @@ export class BestEffortCardParser implements CardParser{
     validateParsedCards(cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
         const cardsToDelete: ParsedCard[] = [];
         this.cards.forEach((card: ParsedCard) => {
+            
+
+            // check for tcgid, this doesnt require set code
+            if(card.tcgid){
+                //console.log('looking up tcgid')
+                card.extra_details['echo_id'] = this.appConfig.tcgidCache[card.tcgid];
+                //console.log('card',card)
+                this.coerceOutputValues(card);
+                return;
+            }
+
+            // from here, if there is no set code, neither set code nad collector number or set code and name will work
             if (!card.set_code) {
                 // This failed to parse. Ddelete it and return it as an error
                 console.log(`Deleting card: ${card.name}, ${card.expansion}, ${card.set}, Reason: Missing Set Code`);
                 cardsToDelete.push(card);
                 return;
             }
+
             // Check if the card name and set exist in the cached data
-            if (this.appConfig.cardCache[card.set_code.toLowerCase()]) {
+            if (card.collectors_number) {
+                //console.log('looking up collectors number',card.set_code.toLowerCase(),card.collectors_number)
+                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.collectors_number]) {
+                    card.extra_details['echo_id'] = this.appConfig.collectoridCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                    this.coerceOutputValues(card);
+                    return;
+                }
+            }
+            
+            // Check if the card name and set exist in the cached data
+            if (card.name) {
                 if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()]) {
                     card.extra_details['echo_id'] = this.appConfig.cardCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
                     this.coerceOutputValues(card);
                     return;
-                } else {
-                    cardsToDelete.push(card);
                 }
-            } else {
-                // The setcode is invalid
-                cardsToDelete.push(card);
             }
+                
+            // no return The setcode is invalid
+            cardsToDelete.push(card);
+            
         });
         cardsToDelete.map(this.deleteCard.bind(this));
 
