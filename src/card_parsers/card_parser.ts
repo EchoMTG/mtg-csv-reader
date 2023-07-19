@@ -192,7 +192,7 @@ export class BestEffortCardParser implements CardParser{
             if (Array.isArray(headerRow)) {
                 const checkRow: string[] = headerRow.map(val => val.toLowerCase());
                 const fixedHeaders: string[] = this.coerceHeaders(checkRow.join(','));
-                //this.validateHeaders(fixedHeaders);
+                this.validateHeaders(fixedHeaders);
                 if (this.parsingErrors.length <= 0) {
                     this.parseRowsWithHeader(fixedHeaders, inputRows);
                 }
@@ -205,7 +205,8 @@ export class BestEffortCardParser implements CardParser{
      * @param headers
      */
     validateHeaders(headers: string[]) {
-        ['name', 'set'].map((val: string) => {
+        // 'name', 'set', 'tcgid'
+        [].map((val: string) => {
             if (headers.indexOf(val) === -1) {
                 // Note:
                 // This bit of code is here to support passing ONLY set_code, as thats how TCGPlayer does it
