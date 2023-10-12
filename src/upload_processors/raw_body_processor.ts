@@ -48,14 +48,9 @@ export class RawBodyProcessor implements UploadProcessor {
             }
         };
         return parsedCard;
-        // concept if we fake a csv row we coudl used existing logic
-        // return this.cardParser.parseSingleCard([
-        //     name,set_code,quanity
-        // ], {
-        //     name: 0
-        //     set_code: 1
-        //     quantity: 2
-        // });
+        // concept: if that data was faked as a csv row existing logic could be used
+        // return this.cardParser.parseSingleCard
+        
     }
 
     processUpload(file: fileUpload.UploadedFile, cb: (err: Error | undefined, data: UploadProcessorResult) => void): void {
@@ -92,22 +87,7 @@ export class RawBodyProcessor implements UploadProcessor {
         }
 
         cb(undefined, parsingResult);
-        // $cards = [];
-        
-
-        // preg_match_all('/(?<quantity>\d+)\s+?(?<name>.*?)\s\[(?<set_code>\w+)\]/m', $text,$matches);
-
-		// $i=0;
-		// foreach($matches['name'] as $match){
-		// 	$cards[] = array('name'=>$matches['name'][$i],'set_code'=>$matches['set_code'][$i],'quantity'=>$matches['quantity'][$i]);
-		// 	$i++;
-		// }
-		
-		// $json = Array ('data'=>$cards, 'message' => 'TCGplayer APP / ScryGlass data Successfully Captured!', 'status' =>'success');
-		
-		
-		// echo json_encode($json);
-
+ 
 
     }
 }
