@@ -32,6 +32,7 @@ export class App {
         this._app.use(cors(corsOptions));
         this._app.use(buildFileUploades);
         this._app.use(mimicUpload);
+        this._app.use(express.json());
     }
 
     async startServer() {
@@ -67,6 +68,9 @@ export class App {
         });
 
         this._app.post('/upload', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            
+            
+
             this._config.fetchEchoConfigData().then(() => {
                 if ( typeof(req.files) === 'undefined' ) {
                     req.files = {
@@ -74,9 +78,12 @@ export class App {
                     };
                 }
                 ProcessorMux.switch(req.files.csvFile, this._config).then((handler: UploadHandler) => {
+                    
+
                     if (typeof (handler.file) === 'undefined') {
-                        handler.file = generateFile(req.body);
+                        handler.file = generateFile(req.body.body);
                     }
+
                     handler.processor.processUpload(handler.file, (err, data: UploadProcessorResult) => {
                         if (err) {
                             res.send(data.parsingErrors).status(400);

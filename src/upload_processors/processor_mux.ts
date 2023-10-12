@@ -15,13 +15,15 @@ export class ProcessorMux {
     static mux: { [index: string]: ProcessorClass } = {
         'text/csv': BasicCsvProcessor,
         'text/tsv': BasicTsvProcessor,
-        'text.plain': RawBodyProcessor
+        'text/plain': RawBodyProcessor
     };
 
     static switch(uploadedFile: UploadedFile | UploadedFile[] | undefined, config: AppConfig): Promise<UploadHandler> {
         return new Promise<UploadHandler>((resolve, reject) => {
-            if (uploadedFile) {
-                const file = (Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile);
+            const file = (Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile);
+
+            if (typeof(file) !== 'undefined') {
+                
                 const processorClass: ProcessorClass | undefined = ProcessorMux.mux[file.mimetype];
                 if (processorClass) {
                     console.log("Determined best uploader from mimetype");
