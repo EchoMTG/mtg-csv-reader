@@ -6,7 +6,7 @@ import {coerceLanguage, validateCondition, validateLanguage} from "../helpers/va
 
 
 export class BestEffortCardParser implements CardParser{
-    headers: parsingStatus = {name: -1, expansion: undefined, set_code: -1};
+    headers: parsingStatus = {name: -1, expansion: -1, set_code: -1};
     cards: ParsedCard[] = [];
     parsingErrors: string[] = [];
     errors: { name: string, set_code: string }[] = [];
@@ -65,7 +65,31 @@ export class BestEffortCardParser implements CardParser{
         // console.log('parsed card object',parsedCard);
         // Set the requried fields
         parsedCard['name'] = details[this.headers.name];
-        parsedCard['set_code'] = details[this.headers.set_code];
+        
+
+        if ((this.headers.expansion || this.headers.set ) && this.headers.set_code == -1) {
+            if(this.headers.expansion && this.headers.expansion != -1){
+                parsedCard['expansion'] = details[this.headers.expansion]
+            }
+            if(this.headers.set && this.headers.set != -1){
+                parsedCard['expansion'] = details[this.headers.set]
+            }
+            
+            // We may need move the expansion value to set_code
+            console.log('missing expansion');
+            if (this.appConfig.getSetByCode(parsedCard['expansion']) !== '') {
+                console.log('Coercing EXPANSION to SET_CODE');
+                parsedCard['set_code'] = parsedCard['expansion'];
+                parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']) ? this.appConfig.getSetByCode(parsedCard['set_code']) : ''
+            }  else {
+                parsedCard['set_code'] = this.appConfig.getCodeBySet(parsedCard['expansion']) ? this.appConfig.getCodeBySet(parsedCard['expansion']) : ''
+            }
+        } else {
+            parsedCard['set_code'] = details[this.headers.set_code];
+            parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']);
+        }
+
+        
         if(this.headers.tcgid){
             parsedCard['tcgid'] = parseInt(details[this.headers.tcgid]);
         }
@@ -77,50 +101,34 @@ export class BestEffortCardParser implements CardParser{
         // Product ID, tcgplayer_id, tcgid, 
         // set number, collector id, card number
 
-        if (this.headers.expansion) {
-            // We may need move the expansion value to set_code
-            if (this.appConfig.setCodes.includes(details[this.headers.expansion])) {
-                console.log('Coercing EXPANSION to SET_CODE');
-                parsedCard['set_code'] = details[this.headers.expansion];
-                parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code'])
-            } else {
-                parsedCard['expansion'] = (this.headers.expansion ? details[this.headers.expansion] : '');
-                parsedCard['set_code'] = (this.headers.set_code ? details[this.headers.set_code] : '');
-            }
-        }
 
-        if (parsedCard['set_code'] && !parsedCard['expansion']) {
-            parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']);
-        }
+        // if (parsedCard['set_code'] && !parsedCard['expansion']) {
+        //     parsedCard['expansion'] = this.appConfig.getSetByCode(parsedCard['set_code']);
+        // }
 
-        if (parsedCard['expansion'] && !parsedCard['set_code']) {
-            let setCode: string | undefined = this.appConfig.getCodeBySet(parsedCard['expansion']);
-            if (setCode) {
-                parsedCard['set_code'] = setCode;
-            }
-        }
+       
 
-        // This is a workaround to allow Set to match to expansion
-        if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
-            const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
-            // console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
+        // // This is a workaround to allow Set to match to expansion
+        // if (this.headers['set'] && (this.headers['set_code'] === -1 || this.headers['expansion'] === -1)) {
+        //     const unknownValue: string | undefined = this.appConfig.getCodeBySet(details[this.headers['set']]);
+        //     // console.log(`Performing mysterSetWorkaround: ${JSON.stringify(unknownValue)} ${details[this.headers['set']]}`);
 
             
-            if (unknownValue) {
-                // They passed a full expac name
-                parsedCard['set_code'] = unknownValue;
-                parsedCard['expansion'] = details[this.headers['set']];
-            } else {
-                // They passed a set code as Set OR they passed an unknown set name
-                if (this.appConfig.setCodes.includes(details[this.headers['set']])) {
-                    parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
-                    parsedCard['set_code'] = details[this.headers['set']];
-                } else {
-                    //TODO - Notify somewhere?
-                    console.log(`WARN: Unknown Set passed: ${details[this.headers['set']]}`);
-                }
-            }
-        }
+        //     if (unknownValue) {
+        //         // They passed a full expac name
+        //         parsedCard['set_code'] = unknownValue;
+        //         parsedCard['expansion'] = details[this.headers['set']];
+        //     } else {
+        //         // They passed a set code as Set OR they passed an unknown set name
+        //         if (this.appConfig.setCodes.includes(details[this.headers['set']])) {
+        //             parsedCard['expansion'] = this.appConfig.getSetByCode(details[this.headers['set']]);
+        //             parsedCard['set_code'] = details[this.headers['set']];
+        //         } else {
+        //             //TODO - Notify somewhere?
+        //             console.log(`WARN: Unknown Set passed: ${details[this.headers['set']]}`);
+        //         }
+        //     }
+        // }
 
         // if (this.headers.condition) {
         //     parsedCard.extra_details['original_condition'] = details[this.headers.condition];
@@ -346,8 +354,8 @@ export class BestEffortCardParser implements CardParser{
             // Check if the card name and set exist in the cached data
             if (card.collectors_number) {
                 //console.log('looking up collectors number',card.set_code.toLowerCase(),card.collectors_number)
-                if (this.appConfig.cardCache[card.set_code.toLowerCase()][card.collectors_number]) {
-                    card.extra_details['echo_id'] = this.appConfig.collectoridCache[card.set_code.toLowerCase()][card.name.toLowerCase()];
+                if (this.appConfig.collectoridCache[card.set_code.toLowerCase()][card.collectors_number]) {
+                    card.extra_details['echo_id'] = this.appConfig.collectoridCache[card.set_code.toLowerCase()][card.collectors_number];
                     this.coerceOutputValues(card);
                     return;
                 }
