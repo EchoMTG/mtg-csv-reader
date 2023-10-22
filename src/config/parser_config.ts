@@ -37,19 +37,23 @@ export class AppConfig {
     }
 
     getSetByCode(code: string) {
-        const index: number = this.setCodes.indexOf(code);
-        return this.setNames[index];
+        const index: number = this.setCodes.indexOf(code.toUpperCase());
+        if (index > -1) {
+            return this.setNames[index]
+        }
+        return ''
     }
 
     /**
      * Query the reference data for a set code by querying on set name
      * @param set
      */
-    getCodeBySet(set: string): string | undefined {
+    getCodeBySet(set: string) {
         const index: number = this.setNames.indexOf(set);
         if (index > -1) {
             return this.setCodes[index]
         }
+        return ''
     }
 
     /**
